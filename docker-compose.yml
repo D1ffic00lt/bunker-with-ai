@@ -1,0 +1,87 @@
+version: '3.4'
+
+services:
+  bot:
+    build: ./discord-client/
+    restart: always
+    volumes:
+      - ./discord-client/config.py:/bot/config.py
+    depends_on:
+      - api
+      - video-streaming
+    environment:
+      PYTHONUNBUFFERED: 1
+      PYTHONDONTWRITEBYTECODE: 1
+  api:
+    build:
+      context: ./api/
+    restart: always
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+      FLASK_RUN_PORT: 9462
+      FLASK_RUN_HOST: "0.0.0.0"
+      FLASK_APP: "api.py"
+    depends_on:
+      - generator
+    volumes:
+      - ./generator/config:/api/config
+      - ./generator/.database:/api/.database/
+  main-generator:
+    build:
+      context: ./generator/
+    restart: always
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+      FLASK_RUN_PORT: 4321
+      FLASK_RUN_HOST: "0.0.0.0"
+      FLASK_APP: "api.py"
+      TOKEN: /run/secrets/main_gpt_token
+      MODEL_URI: /run/secrets/main_gpt_uri
+    secrets:
+      - main_gpt_token
+      - main_gpt_uri
+  reserve-generator:
+    build:
+      context: ./generator/
+    restart: always
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+      FLASK_RUN_PORT: 4321
+      FLASK_RUN_HOST: "0.0.0.0"
+      FLASK_APP: "api.py"
+      TOKEN: /run/secrets/reserve_gpt_token
+      MODEL_URI: /run/secrets/reserve_gpt_uri
+    secrets:
+      - reserve_gpt_token
+      - reserve_gpt_uri
+  generator:
+    build:
+      context: .
+      dockerfile: ./nginx/Dockerfile
+    depends_on:
+      - main-generator
+      - reserve-generator
+    restart: always
+  video-streaming:
+    build: ./flask-video-streaming/
+    restart: always
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+      FLASK_RUN_PORT: 5001
+      FLASK_RUN_HOST: "0.0.0.0"
+      FLASK_APP: "app.py"
+    depends_on:
+      - api
+secrets:
+  main_gpt_token:
+    file: ./secrets/gpt-main/token.txt
+  main_gpt_uri:
+    file: ./secrets/gpt-main/model_uri.txt
+  reserve_gpt_token:
+    file: ./secrets/gpt-reserve/token.txt
+  reserve_gpt_uri:
+    file: ./secrets/gpt-reserve/model_uri.txt
