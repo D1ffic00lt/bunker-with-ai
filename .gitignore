@@ -6,3 +6,5 @@
 **/__pycache__/
 
 secrets/
+
+!discord-client/config.py
