@@ -5,7 +5,8 @@ import random
 import httpx
 import numpy as np
 
-from config.config import *
+from config import *
+from game import Game
 from copy import deepcopy
 
 
@@ -26,7 +27,7 @@ class Generator(object):
         self.__auth_headers = asyncio.run(self.__get_iam_header())
         self.reg = re.compile("{(.*?)}")
         self.tokens = 0
-        self.games = {}
+        self.games: dict[str, Game] = {}
 
     @staticmethod
     def get_age():
@@ -39,6 +40,7 @@ class Generator(object):
                 "https://iam.api.cloud.yandex.net/iam/v1/tokens",
                 json={"yandexPassportOauthToken": self.__token}, timeout=60
             )
+            print(response.json())
         return {
             "Authorization": f"Bearer {str(response.json()['iamToken'])}"
         }
@@ -87,15 +89,13 @@ class Generator(object):
 
     async def generate_player(self, game_code):
         if game_code not in self.games:
-            self.games[game_code] = deepcopy(active_cards)
-        if len(self.games[game_code]) == 0:
-            self.games[game_code] = deepcopy(active_cards)
+            self.games[game_code] = Game()
         data = deepcopy(self.TEMPLATE)
         data["completionOptions"]["temperature"] = 1
         data["messages"].append(
             {
                 "role": "system",
-                "text": player_template
+                "text": self.games[game_code].get_promt(player_template)
             }
         )
         data["messages"].append(
@@ -120,6 +120,7 @@ class Generator(object):
                     headers=self.__auth_headers, timeout=60
                 )
         if resp.status_code != 200:
+            print(resp.text)
             raise KeyError()
         # print(resp.json())
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
@@ -130,11 +131,7 @@ class Generator(object):
         result = json.loads(f"{'{'}{result[0]}{'}'}")
 
         result["age"] = round(self.get_age())
-        active_card = random.choice(self.games[game_code])
-        for i in range(len(self.games[game_code])):
-            if self.games[game_code][i] == active_card:
-                del self.games[game_code][i]
-                break
+        active_card = self.games[game_code].active_card
         gender = random.choices(
             population=["Мужчина", "Женщина", "Гуманоид", "Андроид"],
             weights=[0.5, 0.5, 0.08, 0.08]
