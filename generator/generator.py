@@ -120,7 +120,6 @@ class Generator(object):
                     headers=self.__auth_headers, timeout=60
                 )
         if resp.status_code != 200:
-            print(resp.text)
             raise KeyError()
         # print(resp.json())
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
