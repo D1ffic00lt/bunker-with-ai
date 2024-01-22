@@ -5,7 +5,7 @@ import random
 import httpx
 
 from flask import Flask, make_response, jsonify, request
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, update
 
 from database.db_session import create_session, global_init
 from database.rooms import Room
@@ -18,7 +18,7 @@ if not os.path.isdir(".database/"):
 asyncio.run(global_init("./.database/games.db"))
 
 
-def get_promo_code(num_chars) -> str:
+def get_game_code(num_chars) -> str:
     code_chars = '0123456789abcdefghijklmnopqrstuvwxyz'
     code = ''
     for i in range(0, num_chars):
@@ -31,20 +31,30 @@ def get_promo_code(num_chars) -> str:
 async def new_game(user_id):
     async with create_session() as session:
         async with session.begin():
+            room_id = await session.execute(select(Room).where(Room.host_id == user_id))
+            room_id = room_id.scalars().all()
             await session.execute(delete(Room).where(Room.host_id == user_id))
+            for i in room_id:
+                await session.execute(delete(User).where(User.room_id == i.id))
             try:
-                async with httpx.AsyncClient() as client:
-                    cat = await client.post("http://generator:4322/generator/api/v1/catastrophe", timeout=60)
-                    cat = cat.json()
-                    bunker = await client.post("http://generator:4322/generator/api/v1/bunker", timeout=60)
-                    bunker = bunker.json()
-
+                try:
+                    async with httpx.AsyncClient() as client:
+                        cat = await client.post("http://generator:4322/generator/api/v1/catastrophe", timeout=60)
+                        if cat.status_code // 100 in [5, 4]:
+                            return make_response({"status": False})
+                        cat = cat.json()
+                        bunker = await client.post("http://generator:4322/generator/api/v1/bunker", timeout=60)
+                        if bunker.status_code // 100 in [5, 4]:
+                            return make_response({"status": False})
+                        bunker = bunker.json()
+                except httpx.TimeoutException:
+                    return make_response(jsonify({"status": False}), 501)
                 new_room = Room()
                 new_room.host_id = user_id
                 new_room.bunker = bunker["desc"]
                 new_room.threat = bunker["threat"]
                 new_room.catastrophe = cat["desc"]
-                new_room.game_code = get_promo_code(32)
+                new_room.game_code = get_game_code(32)
                 session.add(new_room)
                 return make_response(jsonify({
                     "room": new_room.game_code, "catastrophe": new_room.catastrophe,
@@ -86,7 +96,7 @@ async def get_game_code_id(host_id):
             return make_response(jsonify({"game_code": room.game_code}), 200)
 
 
-@app.route('/bunker/api/v1/leave-game/<game_code>/<int:user_id>', methods=['POST'])
+@app.route('/bunker/api/v1/leave-game/<game_code>/<int:user_id>', methods=['PATCH'])
 async def leave_game(game_code, user_id):
     async with create_session() as session:
         async with session.begin():
@@ -97,15 +107,9 @@ async def leave_game(game_code, user_id):
             if room_id is None:
                 return make_response(jsonify({"status": False}), 404)
 
-            user = await session.execute(
-                select(User).where(User.room_id == room_id.id and User.user_id == user_id)
+            await session.execute(
+                update(User).values(active=False).where(User.room_id == room_id.id and User.user_id == user_id)
             )
-            user = user.scalars().first()
-            if user is None:
-                return make_response(jsonify({"status": False}), 404)
-
-            user.active = False
-            await session.commit()
             return make_response(jsonify({"status": True}), 201)
 
 
@@ -113,6 +117,7 @@ async def leave_game(game_code, user_id):
 async def add_user(game_code, user_id):
     async with create_session() as session:
         async with session.begin():
+            await session.execute(delete(User).where(User.user_id == user_id))
             try:
                 room_id = await session.execute(
                     select(Room).where(Room.game_code == game_code)
@@ -121,9 +126,16 @@ async def add_user(game_code, user_id):
                 if room_id is None:
                     return make_response(jsonify({"status": False}), 404)
                 room_id = room_id.id
-                async with httpx.AsyncClient() as client:
-                    user_data = await client.post(f"http://generator:4322/generator/api/v1/player/{game_code}", timeout=60)
-                    user_data = user_data.json()
+                try:
+                    async with httpx.AsyncClient() as client:
+                        user_data = await client.post(
+                            f"http://generator:4322/generator/api/v1/player/{game_code}", timeout=60
+                        )
+                        if user_data.status_code // 100 in [5, 4]:
+                            return make_response({"status": False})
+                        user_data = user_data.json()
+                except httpx.TimeoutException:
+                    return make_response(jsonify({"status": False}), 501)
                 user = User()
                 user.user_id = user_id
                 user.age = user_data["age"]
@@ -149,7 +161,16 @@ async def add_user(game_code, user_id):
 @app.route("/bunker/api/v1/result/bunker/", methods=["POST"])
 async def bunker_result():
     async with httpx.AsyncClient() as client:
-        result = await client.post(f"http://generator:4322/generator/api/v1/bunker-result", json=request.json, timeout=60)
+        try:
+            result = await client.post(
+                f"http://generator:4322/generator/api/v1/bunker-result",
+                json=request.json,
+                timeout=60
+            )
+        except httpx.TimeoutException:
+            return make_response(jsonify({"status": False}), 501)
+        if result.status_code // 100 in [5, 4]:
+            return make_response({"status": False})
         result = result.json()
     return make_response(jsonify(result), 201)
 
@@ -157,7 +178,16 @@ async def bunker_result():
 @app.route("/bunker/api/v1/result/surface/", methods=["POST"])
 async def surface_result():
     async with httpx.AsyncClient() as client:
-        result = await client.post(f"http://generator:4322/generator/api/v1/result", json=request.json, timeout=60)
+        try:
+            result = await client.post(
+                f"http://generator:4322/generator/api/v1/result",
+                json=request.json,
+                timeout=60
+            )
+        except httpx.TimeoutException:
+            return make_response(jsonify({"status": False}), 501)
+        if result.status_code // 100 in [5, 4]:
+            return make_response({"status": False})
         result = result.json()
     return make_response(jsonify(result), 201)
 
