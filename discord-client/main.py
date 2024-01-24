@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import warnings
 import discord
 import nest_asyncio
@@ -7,9 +8,7 @@ import logging
 from asyncio import run
 
 from bot import BunkerBOT
-from config import (
-    PREFIX, TOKEN
-)
+from config import PREFIX
 from units.game import Game
 
 warnings.filterwarnings("ignore")
@@ -31,7 +30,10 @@ async def main() -> None:
 
     await BOT.add_cog(Game(BOT))
 
-    BOT.run(TOKEN)
+    with open(os.environ.get('TOKEN')) as token_file:
+        token = token_file.read()
+
+    BOT.run(token)
 
 
 if __name__ == '__main__':

@@ -19,3 +19,13 @@ class BunkerBOT(commands.Bot):
             activity=discord.Game(f"{PREFIX}help")
         )
         logging.info(f"Bot connected")
+
+    @commands.Cog.listener()
+    async def on_command_error(
+            self, ctx: commands.context.Context, error: Exception
+    ) -> None:
+        if isinstance(error, commands.CommandOnCooldown):
+            pass
+        elif isinstance(error, commands.CommandNotFound):
+            pass
+        logging.error(error)
