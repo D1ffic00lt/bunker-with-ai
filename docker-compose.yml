@@ -12,6 +12,9 @@ services:
     environment:
       PYTHONUNBUFFERED: 1
       PYTHONDONTWRITEBYTECODE: 1
+      TOKEN: /run/secrets/discord_token
+    secrets:
+      - discord_token
   api:
     build:
       context: ./api/
@@ -25,7 +28,6 @@ services:
     depends_on:
       - generator
     volumes:
-      - ./generator/config:/api/config
       - ./generator/.database:/api/.database/
   main-generator:
     build:
@@ -74,6 +76,8 @@ services:
       FLASK_RUN_PORT: 5001
       FLASK_RUN_HOST: "0.0.0.0"
       FLASK_APP: "app.py"
+    ports:
+      - "5001:5001"
     depends_on:
       - api
 secrets:
@@ -85,3 +89,5 @@ secrets:
     file: ./secrets/gpt-reserve/token.txt
   reserve_gpt_uri:
     file: ./secrets/gpt-reserve/model_uri.txt
+  discord_token:
+    file: ./secrets/discord_token.txt
