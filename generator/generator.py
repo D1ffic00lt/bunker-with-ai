@@ -138,7 +138,7 @@ class Generator(object):
         result["gender"] = gender
         result["action_card"] = active_card["card"]
         result["phobia"] = random.choice(phobias)
-        result["health"] += f" {random.randint(0, 100)}%" + ', бесплоден' if random.randint(0, 100) >= 90 else ''
+        result["health"] += f" {random.randint(0, 100)}%" + (', бесплоден' if random.randint(0, 100) >= 90 else '')
         experience = random.randint(0, 25)
         while result["age"] - experience < 16:
             experience = random.randint(0, 25)
