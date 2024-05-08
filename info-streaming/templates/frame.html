@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <style>
+        p {
+          color: white;
+          text-align: justify;
+        }
+    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+<div id="stream">
+    <img src="data:image/png;base64,{{image_base64}}" alt="Image">
+</div>
+<script>
+    function reloadPage() {
+        setTimeout(function() {
+            location.reload();
+        }, 10000);
+    }
+    reloadPage();
+</script>
+</body>
+</html>
