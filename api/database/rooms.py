@@ -33,3 +33,13 @@ class Room(SqlAlchemyBase):
         sqlalchemy.String,
         nullable=False
     )
+    additional_information = sqlalchemy.Column(
+        sqlalchemy.String,
+        nullable=False,
+        default=""
+    )
+    started = sqlalchemy.Column(
+        sqlalchemy.Boolean,
+        nullable=False,
+        default=False
+    )

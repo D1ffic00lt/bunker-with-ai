@@ -2,10 +2,11 @@ import asyncio
 import json
 import os.path
 import random
+import re
 import httpx
 
 from flask import Flask, make_response, jsonify, request
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete, update, and_
 
 from database.db_session import create_session, global_init
 from database.rooms import Room
@@ -13,9 +14,10 @@ from database.users import User
 
 app = Flask(__name__)
 
-if not os.path.isdir(".database/"):
-    os.mkdir(".database/")
+if not os.path.isdir("./.database/"):
+    os.mkdir("./.database/")
 asyncio.run(global_init("./.database/games.db"))
+reg = re.compile("\"(.*?)\"")
 
 
 def get_game_code(num_chars) -> str:
@@ -96,6 +98,30 @@ async def get_game_code_id(host_id):
             return make_response(jsonify({"game_code": room.game_code}), 200)
 
 
+@app.route("/bunker/api/v1/reveal-characteristic/<game_code>/<int:user_id>", methods=["PATCH"])
+async def reveal_characteristic(game_code, user_id):
+    async with create_session() as session:
+        async with session.begin():
+            room_id = await session.execute(
+                select(Room).where(Room.game_code == game_code)
+            )
+            room_id = room_id.scalars().first()
+            if room_id is None:
+                return make_response(jsonify({"status": False}), 404)
+
+            user = await session.execute(
+                select(User).where(and_(User.room_id == room_id.id, User.user_id == user_id))
+            )
+            user = user.scalars().first()
+            if user is None:
+                return make_response(jsonify({"status": False}), 404)
+
+            user.update(request.json["attribute"] + "_revealed")
+            # await session.execute(update(user))
+            await session.commit()
+            return make_response(jsonify({"status": True}), 201)
+
+
 @app.route('/bunker/api/v1/leave-game/<game_code>/<int:user_id>', methods=['PATCH'])
 async def leave_game(game_code, user_id):
     async with create_session() as session:
@@ -113,6 +139,90 @@ async def leave_game(game_code, user_id):
             return make_response(jsonify({"status": True}), 201)
 
 
+@app.route('/bunker/api/v1/use-active-card/<game_code>/<int:user_id>', methods=['POST'])
+async def use_active_card(game_code, user_id):
+    async with create_session() as session:
+        async with session.begin():
+            room = await session.execute(
+                select(Room).where(Room.game_code == game_code)
+            )
+            room = room.scalars().first()
+            room_id = room.id
+            if room_id is None:
+                return make_response(jsonify({"status": False}), 404)
+
+            user = await session.execute(select(User).where(
+                and_(User.room_id == room_id, User.user_id == user_id)
+            ))
+            user = user.scalars().first()
+            active_card = user.action_card
+            try:
+                async with httpx.AsyncClient() as client:
+                    active_card = await client.get(
+                        f"http://generator:4322/generator/api/v1/get-active-card/{active_card}"
+                    )
+                    active_card = active_card.json()
+            except httpx.TimeoutException:
+                return make_response(jsonify({"status": False}), 404)
+
+            if active_card["id"] == 3:
+                player_card_attr = reg.findall(active_card["card"])[0]
+                users = await session.execute(select(User).where(
+                    and_(User.get_attr(player_card_attr, revealed=True), User.active, User.room_id == room_id)
+                ))
+                users = users.scalars().all()
+                player = None
+                for i in users:
+                    if i.user_id == user_id:
+                        player = i
+                users = list(filter(lambda x: x.user_id != user_id, users))
+                if not users or player is None:
+                    return make_response({"status": False}, 404)
+                player_to_switch = random.choice(users)
+                attr = player_to_switch.get_attr(player_card_attr)
+
+                player_to_switch.set_attr(player_card_attr, player.get_attr(player_card_attr))
+                player.set_attr(player_card_attr, attr)
+            elif active_card["id"] == 5:
+                player_card_attr = reg.findall(active_card["card"])[0]
+                users = await session.execute(select(User).where(
+                    and_(User.get_attr(player_card_attr, revealed=True), User.active, User.room_id == room_id)
+                ))
+                users = users.scalars().all()
+                attrs = [i.get_attr(player_card_attr) for i in users]
+                random.shuffle(attrs)
+                for i in range(len(attrs)):
+                    users[i].set_attr(player_card_attr, attrs[i])
+            elif active_card["id"] == 7:
+                user.health = "Здоров"
+            elif active_card["id"] == 11:
+                room.additional_information += "дружественный бункер неподалёку; "
+            elif active_card["id"] == 12:
+                room.additional_information += "враждебный бункер неподалёку; "
+            elif active_card["id"] == 13:
+                room.additional_information += "заброшенная больница неподалёку; "
+            elif active_card["id"] == 14:
+                room.additional_information += "заброшенный военный лагерь неподалёку; "
+
+            await session.commit()
+            return make_response({"status": True}, 201)
+
+
+@app.route("/bunker/api/v1/start-game/<game_code>", methods=['POST'])
+async def start_game(game_code):
+    async with create_session() as session:
+        async with session.begin():
+            room = await session.execute(
+                select(Room).where(Room.game_code == game_code)
+            )
+            room = room.scalars().first()
+            if room is None:
+                return make_response(jsonify({"status": False}), 404)
+            room.started = True
+            await session.commit()
+            return make_response(jsonify({"status": True}), 201)
+
+
 @app.route('/bunker/api/v1/add-user/<game_code>/<int:user_id>', methods=['POST'])
 async def add_user(game_code, user_id):
     async with create_session() as session:
@@ -125,6 +235,8 @@ async def add_user(game_code, user_id):
                 room_id = room_id.scalars().first()
                 if room_id is None:
                     return make_response(jsonify({"status": False}), 404)
+                if room_id.started:
+                    return make_response(jsonify({"status": False}), 400)
                 room_id = room_id.id
                 try:
                     async with httpx.AsyncClient() as client:
@@ -158,7 +270,7 @@ async def add_user(game_code, user_id):
                 return make_response(jsonify({"status": False}), 501)
 
 
-@app.route("/bunker/api/v1/result/bunker/", methods=["POST"])
+@app.route("/bunker/api/v1/result/bunker", methods=["POST"])
 async def bunker_result():
     async with httpx.AsyncClient() as client:
         try:
@@ -170,12 +282,12 @@ async def bunker_result():
         except httpx.TimeoutException:
             return make_response(jsonify({"status": False}), 501)
         if result.status_code // 100 in [5, 4]:
-            return make_response({"status": False})
+            return make_response({"status": False}, 501)
         result = result.json()
     return make_response(jsonify(result), 201)
 
 
-@app.route("/bunker/api/v1/result/surface/", methods=["POST"])
+@app.route("/bunker/api/v1/result/surface", methods=["POST"])
 async def surface_result():
     async with httpx.AsyncClient() as client:
         try:
@@ -187,7 +299,7 @@ async def surface_result():
         except httpx.TimeoutException:
             return make_response(jsonify({"status": False}), 501)
         if result.status_code // 100 in [5, 4]:
-            return make_response({"status": False})
+            return make_response({"status": False}, 501)
         result = result.json()
     return make_response(jsonify(result), 201)
 
@@ -208,6 +320,8 @@ async def get_game(game_code):
             response["bunker"] = room.bunker
             response["threat"] = room.threat
             response["catastrophe"] = room.catastrophe
+            response["started"] = room.started
+            response["additional_information"] = room.additional_information
             response["users"] = []
             users = await session.execute(
                 select(User).where(User.room_id == room.id)
@@ -216,20 +330,7 @@ async def get_game(game_code):
 
             for i in users:
                 response["users"].append(
-                    {
-                        "user_id": i.user_id,
-                        "gender": i.gender,
-                        "health": i.health,
-                        "profession": i.profession,
-                        "hobby": i.hobby,
-                        "luggage": i.luggage,
-                        "action_card": i.action_card,
-                        "phobia": i.phobia,
-                        "age": i.age,
-                        "fact1": i.fact1,
-                        "fact2": i.fact2,
-                        "active": i.active
-                    }
+                    i.to_json()
                 )
             # print(response)
             return make_response(jsonify(response), 200)
