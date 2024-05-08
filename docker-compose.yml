@@ -8,7 +8,7 @@ services:
       - ./discord-client/config.py:/bot/config.py
     depends_on:
       - api
-      - video-streaming
+      - info-streaming
     environment:
       PYTHONUNBUFFERED: 1
       PYTHONDONTWRITEBYTECODE: 1
@@ -28,7 +28,7 @@ services:
     depends_on:
       - generator
     volumes:
-      - ./generator/.database:/api/.database/
+      - ./api/.database:/api/.database/
   main-generator:
     build:
       context: ./generator/
@@ -67,8 +67,8 @@ services:
       - main-generator
       - reserve-generator
     restart: always
-  video-streaming:
-    build: ./flask-video-streaming/
+  info-streaming:
+    build: info-streaming/
     restart: always
     environment:
       PYTHONDONTWRITEBYTECODE: 1
@@ -80,6 +80,34 @@ services:
       - "5001:5001"
     depends_on:
       - api
+      - frame-generator
+      - redis
+  frame-generator:
+    build: ./frame-generator/
+    restart: always
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+      FLASK_RUN_PORT: 1334
+      FLASK_RUN_HOST: "0.0.0.0"
+      FLASK_APP: "app.py"
+    depends_on:
+      - api
+  redis:
+    image: redis:latest
+    restart: always
+    environment:
+      - REDIS_PORT=1239
+      - REDIS_DATABASES=16
+      - ALLOW_EMPTY_PASSWORD=yes
+      - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL,CONFIG
+    command: [
+      "redis-server",
+      "--appendonly", "no",
+      "--maxmemory", "500mb",
+      "--maxmemory-policy", "allkeys-lru",
+      "--port", "1239"
+    ]
 secrets:
   main_gpt_token:
     file: ./secrets/gpt-main/token.txt
