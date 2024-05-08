@@ -6,6 +6,8 @@ import httpx
 from discord.ext import commands
 from discord import app_commands
 
+from .button import ControlButtons
+
 
 class Game(commands.Cog):
     def __init__(self, bot: commands.Bot, *args, **kwargs) -> None:
@@ -52,8 +54,24 @@ class Game(commands.Cog):
                 "threat": response["threat"],
                 "users": {}
             }
+            try:
+                url = await client.get(
+                    "http://info-streaming:5001/api/v1/url",
+                    timeout=60
+                )
+                if url.status_code // 100 in [4, 5]:
+                    await inter.edit_original_response(content="Что-то пошло не так...")
+                    return
+            except httpx.TimeoutException:
+                await inter.edit_original_response(content="Что-то пошло не так...")
+                return
+            url = url.json()["url"]
+
             await inter.edit_original_response(
-                content=f"Игра создана! Код для входа: ||`{response['room']}`||"
+                content=f"Игра создана! Код для входа: ||`{response['room']}`||\n\n"
+                        f"Ссылка на информацию о катастрофе: ||{url + f'api/v1/catastrophe/{inter.user.id}'}||\n"
+                        f"Ссылка на информацию о бункере: ||{url + f'api/v1/bunker/{inter.user.id}'}||\n"
+                        f"Ссылка на угрозу в бункере: ||{url + f'api/v1/threat-in-bunker/{inter.user.id}'}||"
             )
 
     @app_commands.command(name="join", description="Присоединиться к игре")
@@ -77,6 +95,33 @@ class Game(commands.Cog):
             except httpx.TimeoutException:
                 await inter.edit_original_response(content="Что-то пошло не так...")
                 return
+            try:
+                game = await client.get("http://api:9462/bunker/api/v1/get-game/{}".format(game_code), timeout=60)
+                if game.status_code // 100 in [4, 5]:
+                    await inter.edit_original_response(content="Что-то пошло не так...")
+                    return
+            except httpx.TimeoutException:
+                await inter.edit_original_response(content="Что-то пошло не так...")
+                return
+            try:
+                url = await client.get(
+                    "http://info-streaming:5001/api/v1/url",
+                    timeout=60
+                )
+                if url.status_code // 100 in [4, 5]:
+                    await inter.edit_original_response(content="Что-то пошло не так...")
+                    return
+            except httpx.TimeoutException:
+                await inter.edit_original_response(content="Что-то пошло не так...")
+                return
+            url = url.json()["url"]
+            host = game.json()["host_id"]
+            host = await self.bot.fetch_user(host)
+            await host.send(
+                "<@{}> зашёл в игру. Ссылка на рамку: ||{}||".format(
+                    inter.user.id, f"{url}api/v1/user-frame/{host.id}/{inter.user.id}"
+                )
+            )
             await inter.edit_original_response(
                 content=f"Вы в игре!"
             )
@@ -88,6 +133,14 @@ class Game(commands.Cog):
         async with httpx.AsyncClient() as client:
             try:
                 game = await client.get("http://api:9462/bunker/api/v1/get-game/{}".format(game_code), timeout=60)
+                if game.status_code // 100 in [4, 5]:
+                    await inter.edit_original_response(content="Что-то пошло не так...")
+                    return
+            except httpx.TimeoutException:
+                await inter.edit_original_response(content="Что-то пошло не так...")
+                return
+            try:
+                await client.post("http://api:9462/bunker/api/v1/start-game/{}".format(game_code), timeout=60)
                 if game.status_code // 100 in [4, 5]:
                     await inter.edit_original_response(content="Что-то пошло не так...")
                     return
@@ -113,7 +166,7 @@ class Game(commands.Cog):
                     pass
             user_desc += "```"
             await user.send(game_gesc)
-            await user.send(user_desc)
+            await user.send(user_desc, view=ControlButtons(game_code))
 
     @app_commands.command(name="get-result", description="Получить итоги игры")
     async def __gat_result(self, inter: discord.Interaction, game_code: str) -> None:
@@ -134,7 +187,7 @@ class Game(commands.Cog):
             game = game.json()
             try:
                 bunker_result = await client.post(
-                    "http://api:9462/bunker/api/v1/result/bunker/", json=game, timeout=60
+                    "http://api:9462/bunker/api/v1/result/bunker", json=game, timeout=60
                 )
                 if bunker_result.status_code // 100 in [4, 5]:
                     await inter.edit_original_response(content="Что-то пошло не так...")
@@ -144,7 +197,7 @@ class Game(commands.Cog):
                 return
             try:
                 surface_result = await client.post(
-                    "http://api:9462/bunker/api/v1/result/surface/", json=game, timeout=60
+                    "http://api:9462/bunker/api/v1/result/surface", json=game, timeout=60
                 )
                 if surface_result.status_code // 100 in [4, 5]:
                     await inter.edit_original_response(content="Что-то пошло не так...")
@@ -174,9 +227,12 @@ class Game(commands.Cog):
             return
         async with httpx.AsyncClient() as client:
             try:
-                await client.patch(
+                response = await client.patch(
                     "http://api:9462/bunker/api/v1/leave-game/{}/{}".format(game_code, inter.user.id)
                 )
+                if response.status_code // 100 in [4, 5]:
+                    await inter.edit_original_response(content="Что-то пошло не так...")
+                    return
             except httpx.TimeoutException:
                 await inter.response.send_message(content="Что-то пошло не так...")
                 return
@@ -187,6 +243,8 @@ class Game(commands.Cog):
         async with httpx.AsyncClient() as client:
             try:
                 game = await client.get("http://api:9462/bunker/api/v1/get-game/{}".format(game_code), timeout=60)
+                if game.status_code // 100 in [4, 5]:
+                    return -1
             except httpx.TimeoutException:
                 return -1
             game = game.json()
