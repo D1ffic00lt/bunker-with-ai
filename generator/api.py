@@ -1,5 +1,6 @@
 import json
 import os
+import config
 
 from flask import Flask, make_response, jsonify, request
 
@@ -18,7 +19,7 @@ gen.TEMPLATE["modelUri"] = model_uri
 @app.route('/generator/api/v1/catastrophe', methods=['POST'])
 async def generate_catastrophe():
     cat = {}
-    limit = 10
+    limit = 4
     while cat == {}:
         try:
             cat = await gen.generate_catastrophe()
@@ -33,7 +34,7 @@ async def generate_catastrophe():
 @app.route('/generator/api/v1/bunker', methods=['POST'])
 async def generate_bunker():
     bunker = {}
-    limit = 10
+    limit = 4
     while bunker == {}:
         try:
             bunker = await gen.generate_bunker()
@@ -48,7 +49,7 @@ async def generate_bunker():
 @app.route('/generator/api/v1/player/<game_code>', methods=['POST'])
 async def generate_player(game_code):
     user_data = {}
-    limit = 10
+    limit = 4
     while user_data == {} or limit == 0:
         try:
             user_data = await gen.generate_player(game_code)
@@ -69,7 +70,7 @@ async def generate_player(game_code):
 @app.route('/generator/api/v1/bunker-result', methods=['POST'])
 async def generate_bunker_result():
     result = {}
-    limit = 10
+    limit = 4
     while result == {}:
         try:
             result = await gen.generate_bunker_result(request.json)
@@ -82,10 +83,18 @@ async def generate_bunker_result():
     return make_response(jsonify(result), 201)
 
 
+@app.route('/generator/api/v1/get-active-card/<card>', methods=['GET'])
+async def get_active_card(card):
+    for i in config.active_cards:
+        if i["card"] == card:
+            return make_response(jsonify(i), 201)
+    return make_response({"card": "", "id": -1}, 404)
+
+
 @app.route('/generator/api/v1/result', methods=['POST'])
 async def generate_result():
     result = {}
-    limit = 10
+    limit = 4
     while result == {}:
         try:
             result = await gen.generate_result(request.json)

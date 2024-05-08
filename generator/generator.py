@@ -40,7 +40,7 @@ class Generator(object):
                 "https://iam.api.cloud.yandex.net/iam/v1/tokens",
                 json={"yandexPassportOauthToken": self.__token}, timeout=60
             )
-            print(response.json())
+            # print(response.json())
         return {
             "Authorization": f"Bearer {str(response.json()['iamToken'])}"
         }
@@ -69,7 +69,7 @@ class Generator(object):
                 json=data,
                 headers=self.__auth_headers, timeout=60
             )
-        if resp.status_code != 401:
+        if resp.status_code == 401:
             self.__auth_headers = await self.__get_iam_header()
             async with httpx.AsyncClient() as client:
                 resp = await client.post(
@@ -78,7 +78,7 @@ class Generator(object):
                     headers=self.__auth_headers, timeout=60
                 )
         if resp.status_code != 200:
-            raise KeyError()
+            raise KeyError(resp.text)
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
         result = resp.json()["result"]["alternatives"][-1]["message"]["text"]
         result = result.replace("\n", "")
@@ -111,7 +111,7 @@ class Generator(object):
                 json=data,
                 headers=self.__auth_headers, timeout=60
             )
-        if resp.status_code != 401:
+        if resp.status_code == 401:
             self.__auth_headers = await self.__get_iam_header()
             async with httpx.AsyncClient() as client:
                 resp = await client.post(
@@ -120,7 +120,7 @@ class Generator(object):
                     headers=self.__auth_headers, timeout=60
                 )
         if resp.status_code != 200:
-            raise KeyError()
+            raise KeyError(resp.text)
         # print(resp.json())
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
         result = resp.json()["result"]["alternatives"][-1]["message"]["text"]
@@ -163,12 +163,12 @@ class Generator(object):
         )
         async with httpx.AsyncClient() as client:
             resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
-        if resp.status_code != 401:
+        if resp.status_code == 401:
             self.__auth_headers = await self.__get_iam_header()
             async with httpx.AsyncClient() as client:
                 resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
         if resp.status_code != 200:
-            raise KeyError()
+            raise KeyError(resp.text)
 
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
         result = resp.json()["result"]["alternatives"][-1]["message"]["text"]
@@ -180,8 +180,11 @@ class Generator(object):
 
     @staticmethod
     def get_text_game_data(game_data, status: bool = True):
+        additional_data = game_data["additional_information"]
+        additional_data = additional_data if additional_data != "" else "None"
         result = (
             f'Катастрофа: {game_data["catastrophe"]}\n'
+            f'Дополнительные условия: {additional_data}\n'
             f'Люди, {"НЕ " if not status else ""}попавшие в бункер:\n'
         )
         for user in game_data["users"]:
@@ -218,12 +221,12 @@ class Generator(object):
         async with httpx.AsyncClient() as client:
             resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
         # print(resp.json())
-        if resp.status_code != 401:
+        if resp.status_code == 401:
             self.__auth_headers = await self.__get_iam_header()
             async with httpx.AsyncClient() as client:
                 resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
         if resp.status_code != 200:
-            raise KeyError()
+            raise KeyError(resp.text)
 
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
         result = resp.json()["result"]["alternatives"][-1]["message"]["text"]
@@ -253,12 +256,12 @@ class Generator(object):
         async with httpx.AsyncClient() as client:
             resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
         # print(resp.json())
-        if resp.status_code != 401:
+        if resp.status_code == 401:
             self.__auth_headers = await self.__get_iam_header()
             async with httpx.AsyncClient() as client:
                 resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
         if resp.status_code != 200:
-            raise KeyError()
+            raise KeyError(resp.text)
 
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
         result = resp.json()["result"]["alternatives"][-1]["message"]["text"]
