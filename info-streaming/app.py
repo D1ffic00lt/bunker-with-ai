@@ -82,7 +82,7 @@ async def get_threat(user_id):
     return make_response(render_template("index.html", content=game["threat"]), 200)
 
 
-@app.route("/api/v1/user-frame/<int:host_id>/<int:user_id>")
+@app.route("/api/v1/user-frame/<int:host_id>/<int:user_id>", methods=["GET"])
 async def get_user_frame(host_id, user_id):
     async with httpx.AsyncClient() as requests:
         async def get_not_found_frame():
@@ -94,9 +94,9 @@ async def get_user_frame(host_id, user_id):
                     "http://frame-generator:1334/api/v1/get-user-frame", json=not_found_frame_data
                 )
             except httpx.TimeoutException:
-                return make_response(jsonify({"status": False}), 501)
+                return b""
             if not_found_frame.status_code // 100 in [4, 5]:
-                return make_response(jsonify({"status": False}), not_found_frame.status_code)
+                return b""
 
             not_found_frame = not_found_frame.content
             not_found_frame = base64.b64encode(io.BytesIO(not_found_frame).getvalue()).decode('utf-8')
@@ -125,7 +125,7 @@ async def get_user_frame(host_id, user_id):
                 break
 
         if user_data == {}:
-            return make_response(jsonify({"status": False}), 404)
+            return render_template("frame.html", image_base64=(await get_not_found_frame()))
         user_code = (f"{user_data['gender_revealed']}{user_data['health_revealed']}{user_data['profession_revealed']}"
                      f"{user_data['hobby_revealed']}{user_data['luggage_revealed']}{user_data['age_revealed']}"
                      f"{user_data['fact1_revealed']}{user_data['fact2_revealed']}{user_data['phobia_revealed']}"
