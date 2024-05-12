@@ -3,9 +3,32 @@ import httpx
 
 
 class ControlButtons(discord.ui.View):
-    def __init__(self, code):
+    ATTRIBUTES_TRANSLATE = {
+        "Пол и Возраст": "age_revealed",
+        "Здоровье": "health_revealed",
+        "Профессия": "profession_revealed",
+        "Хобби": "hobby_revealed",
+        "Багаж": "luggage_revealed",
+        "Факт 1": "fact1_revealed",
+        "Факт 2": "fact2_revealed",
+        "Фобия": "phobia_revealed",
+        "Активная Карта": "action_card_revealed"
+    }
+
+    def __init__(self, code, *, bot, user_data):
         super().__init__(timeout=None)
+        self.messages = []
         self.game_code = code
+        self.bot = bot
+        if not user_data["active"]:
+            for i in self.children:
+                i.disabled = True
+            return
+        for i in self.children:
+            if i.label not in self.ATTRIBUTES_TRANSLATE:
+                continue
+            if user_data[self.ATTRIBUTES_TRANSLATE[i.label]]:
+                i.disabled = True
 
     async def send(self, attribute, user_id):
         async with httpx.AsyncClient() as client:
@@ -27,7 +50,6 @@ class ControlButtons(discord.ui.View):
         await inter.message.edit(view=self)
         await self.send("gender", inter.user.id)
         await self.send("age", inter.user.id)
-
         await inter.response.send_message("Вскрыто")
         message = await inter.original_response()
         await message.delete(delay=5)

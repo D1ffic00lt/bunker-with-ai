@@ -7,6 +7,7 @@ from discord.ext import commands
 from discord import app_commands
 
 from .button import ControlButtons
+from .votes import StartVoteButton
 
 
 class Game(commands.Cog):
@@ -134,21 +135,22 @@ class Game(commands.Cog):
             try:
                 game = await client.get("http://api:9462/bunker/api/v1/get-game/{}".format(game_code), timeout=60)
                 if game.status_code // 100 in [4, 5]:
-                    await inter.edit_original_response(content="Что-то пошло не так...")
+                    await inter.response.send_message("Что-то пошло не так...")
                     return
             except httpx.TimeoutException:
-                await inter.edit_original_response(content="Что-то пошло не так...")
+                await inter.response.send_message("Что-то пошло не так...")
                 return
             try:
-                await client.post("http://api:9462/bunker/api/v1/start-game/{}".format(game_code), timeout=60)
-                if game.status_code // 100 in [4, 5]:
-                    await inter.edit_original_response(content="Что-то пошло не так...")
+                start = await client.post("http://api:9462/bunker/api/v1/start-game/{}".format(game_code), timeout=60)
+                if start.status_code // 100 in [4, 5]:
+                    await inter.response.send_message("Что-то пошло не так...")
                     return
             except httpx.TimeoutException:
-                await inter.edit_original_response(content="Что-то пошло не так...")
+                await inter.response.send_message("Что-то пошло не так...")
                 return
             game = game.json()
         if game["host_id"] != inter.user.id:
+            await inter.response.send_message("Что-то пошло не так...")
             return  # TODO
         game_gesc = (f"**Сценарий**:\n```\n{game['catastrophe']}\n```\n"
                      f"**Бункер**:\n```\n{game['bunker']}\n```\n"
@@ -166,10 +168,13 @@ class Game(commands.Cog):
                     pass
             user_desc += "```"
             await user.send(game_gesc)
-            await user.send(user_desc, view=ControlButtons(game_code))
+            view = ControlButtons(game_code, bot=self.bot, user_data=player)
+            if player["user_id"] == game["host_id"]:
+                view.add_item(StartVoteButton(label="Начать голосование"))
+            await user.send(user_desc, view=view)
 
     @app_commands.command(name="get-result", description="Получить итоги игры")
-    async def __gat_result(self, inter: discord.Interaction, game_code: str) -> None:
+    async def __get_result(self, inter: discord.Interaction, game_code: str) -> None:
         if not self.check_role_exists(inter.user.id):
             return
         await inter.response.send_message("Отправляю результаты. Это может занять какое-то время.")
@@ -185,6 +190,8 @@ class Game(commands.Cog):
                 await inter.edit_original_response(content="Что-то пошло не так...")
                 return
             game = game.json()
+            if game["host_id"] != inter.user.id:
+                return  # TODO
             try:
                 bunker_result = await client.post(
                     "http://api:9462/bunker/api/v1/result/bunker", json=game, timeout=60
@@ -255,10 +262,12 @@ class Game(commands.Cog):
         #     return user_id == 248021970774392832
         if user_id == 401555829620211723:
             return True
+        if user_id == 727817634669789204:
+            return True
         guild = self.bot.get_guild(902508714383261696)
         member = guild.get_member(user_id)
         for i in member.roles:
-            if i.id == 1229399905647460392:
+            if i.id == 1238504301714997318:
                 return True
         return False
 
