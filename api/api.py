@@ -134,7 +134,7 @@ async def leave_game(game_code, user_id):
                 return make_response(jsonify({"status": False}), 404)
 
             await session.execute(
-                update(User).values(active=False).where(User.room_id == room_id.id and User.user_id == user_id)
+                update(User).values(active=False).where(and_(User.room_id == room_id.id, User.user_id == user_id))
             )
             return make_response(jsonify({"status": True}), 201)
 
@@ -287,6 +287,90 @@ async def bunker_result():
     return make_response(jsonify(result), 201)
 
 
+@app.route("/bunker/api/v1/user/add-vote/<game_code>/<int:user_id>", methods=["PUT"])
+async def add_vote(game_code, user_id):
+    print(user_id)
+    async with create_session() as session:
+        async with session.begin():
+            room_id = await session.execute(
+                select(Room).where(Room.game_code == game_code)
+            )
+            room_id = room_id.scalars().first()
+            if room_id is None:
+                return make_response(jsonify({"status": False}), 404)
+
+            user = await session.execute(
+                select(User).where(and_(User.room_id == room_id.id, User.user_id == user_id))
+            )
+            user = user.scalars().first()
+            if user is None:
+                return make_response(jsonify({"status": False}), 404)
+            print(user.to_json())
+            user.number_of_votes += 1
+            # await session.execute(
+            #     update(User).values(number_of_votes=user.number_of_votes + 1).where(
+            #         User.room_id == room_id.id and User.user_id == user_id
+            #     )
+            # )
+            return make_response(jsonify({"status": True}), 201)
+
+
+@app.route("/bunker/api/v1/user/remove-vote/<game_code>/<int:user_id>", methods=["PUT"])
+async def remove_vote(game_code, user_id):
+    async with create_session() as session:
+        async with session.begin():
+            room_id = await session.execute(
+                select(Room).where(Room.game_code == game_code)
+            )
+            room_id = room_id.scalars().first()
+            if room_id is None:
+                return make_response(jsonify({"status": False}), 404)
+
+            user = await session.execute(
+                select(User).where(and_(User.room_id == room_id.id, User.user_id == user_id))
+            )
+            user = user.scalars().first()
+            if user is None:
+                return make_response(jsonify({"status": False}), 404)
+
+            user.number_of_votes -= 1
+            # await session.execute(
+            #     update(User).values(number_of_votes=user.number_of_votes - 1).where(
+            #         User.room_id == room_id.id and User.user_id == user_id
+            #     )
+            # )
+            return make_response(jsonify({"status": True}), 201)
+
+
+@app.route("/bunker/api/v1/user/reset-vote/<game_code>", methods=["PUT"])
+async def reset_vote(game_code):
+    async with create_session() as session:
+        async with session.begin():
+            room_id = await session.execute(
+                select(Room).where(Room.game_code == game_code)
+            )
+            room_id = room_id.scalars().first()
+            if room_id is None:
+                return make_response(jsonify({"status": False}), 404)
+
+            users = await session.execute(
+                select(User).where(User.room_id == room_id.id)
+            )
+            users = users.scalars().all()
+            if users is None:
+                return make_response(jsonify({"status": False}), 404)
+
+            for user in users:
+                user.number_of_votes = 0
+
+            # await session.execute(
+            #     update(User).values(number_of_votes=0).where(
+            #         User.room_id == room_id.id
+            #     )
+            # )
+            return make_response(jsonify({"status": True}), 201)
+
+
 @app.route("/bunker/api/v1/result/surface", methods=["POST"])
 async def surface_result():
     async with httpx.AsyncClient() as client:
@@ -313,6 +397,8 @@ async def get_game(game_code):
                 select(Room).where(Room.game_code == game_code)
             )
             room = room.scalars().first()
+            if room is None:
+                return make_response(jsonify({"status": False}), 404)
 
             response["id"] = room.id
             response["host_id"] = room.host_id

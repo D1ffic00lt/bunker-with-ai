@@ -1,4 +1,5 @@
 import sqlalchemy
+
 from sqlalchemy.ext.hybrid import hybrid_method
 
 from .db_session import SqlAlchemyBase
@@ -129,6 +130,11 @@ class User(SqlAlchemyBase):
         nullable=False,
         default=True
     )
+    number_of_votes = sqlalchemy.Column(
+        sqlalchemy.Integer,
+        nullable=False,
+        default=0
+    )
 
     def to_json(self):
         return {
@@ -155,6 +161,7 @@ class User(SqlAlchemyBase):
             "fact1_revealed": self.fact1_revealed,
             "fact2_revealed": self.fact2_revealed,
             "phobia_revealed": self.phobia_revealed,
+            "number_of_votes": self.number_of_votes
         }
 
     @hybrid_method
