@@ -5,7 +5,11 @@ from flask import Flask, request, send_file, make_response
 from generator import Generator
 
 app = Flask(__name__)
-gen = Generator("./static/SQUADBUNKERWEBKA.png", "./static/Gilroy Extra Bold.otf")
+gen = Generator(
+    template_path="./static/SQUADBUNKERWEBKA.png",
+    font_path="./static/Gilroy Extra Bold.otf",
+    flag_path="./static/red_flag.png"
+)
 
 
 @app.route('/api/v1/get-user-frame', methods=['POST'])
