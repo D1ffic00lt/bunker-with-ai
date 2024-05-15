@@ -129,7 +129,7 @@ async def get_user_frame(host_id, user_id):
         user_code = (f"{user_data['gender_revealed']}{user_data['health_revealed']}{user_data['profession_revealed']}"
                      f"{user_data['hobby_revealed']}{user_data['luggage_revealed']}{user_data['age_revealed']}"
                      f"{user_data['fact1_revealed']}{user_data['fact2_revealed']}{user_data['phobia_revealed']}"
-                     f"{user_data['number_of_votes']}")
+                     f"{user_data['number_of_votes']}{user_data['switches']}")
 
         if redis_db.get(f"{host_id}:{user_id}") == user_code and redis_db.exists(f"frame_{host_id}:{user_id}"):
             frame = redis_db.get(f"frame_{host_id}:{user_id}")

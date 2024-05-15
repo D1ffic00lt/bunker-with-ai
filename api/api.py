@@ -183,6 +183,8 @@ async def use_active_card(game_code, user_id):
 
                 player_to_switch.set_attr(player_card_attr, player.get_attr(player_card_attr))
                 player.set_attr(player_card_attr, attr)
+                player_to_switch.switches += 1
+                player.switches += 1
             elif active_card["id"] == 5:
                 player_card_attr = reg.findall(active_card["card"])[0]
                 users = await session.execute(select(User).where(
@@ -191,10 +193,12 @@ async def use_active_card(game_code, user_id):
                 users = users.scalars().all()
                 attrs = [i.get_attr(player_card_attr) for i in users]
                 random.shuffle(attrs)
-                for i in range(len(attrs)):
+                for i in range(len(users)):
                     users[i].set_attr(player_card_attr, attrs[i])
+                    users[i].switches += 1
             elif active_card["id"] == 7:
                 user.health = "Здоров"
+                user.switches += 1
             elif active_card["id"] == 11:
                 room.additional_information += "дружественный бункер неподалёку; "
             elif active_card["id"] == 12:

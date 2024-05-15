@@ -135,6 +135,11 @@ class User(SqlAlchemyBase):
         nullable=False,
         default=0
     )
+    switches = sqlalchemy.Column(
+        sqlalchemy.Integer,
+        nullable=False,
+        default=0
+    )
 
     def to_json(self):
         return {
@@ -161,7 +166,8 @@ class User(SqlAlchemyBase):
             "fact1_revealed": self.fact1_revealed,
             "fact2_revealed": self.fact2_revealed,
             "phobia_revealed": self.phobia_revealed,
-            "number_of_votes": self.number_of_votes
+            "number_of_votes": self.number_of_votes,
+            "switches": self.switches
         }
 
     @hybrid_method
