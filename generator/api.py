@@ -58,7 +58,7 @@ async def generate_player(game_code):
                 'fact2', 'age', 'action_card', 'phobia'
             ]:
                 user_data = {}
-        except (KeyError, json.decoder.JSONDecodeError):
+        except (KeyError, json.decoder.JSONDecodeError, IndexError):
             limit -= 1
             user_data = {}
     if limit == 0:
