@@ -28,6 +28,8 @@ class Generator(object):
         phobia = data["phobia"].lower() if data["phobia_revealed"] else "фобия"
         hobby = data["hobby"].lower() if data["hobby_revealed"] else "хобби"
         votes = data["number_of_votes"]
+        if votes < 0:
+            votes = 0
 
         template_image = deepcopy(self.template_image)
         image = ImageDraw.Draw(template_image)
