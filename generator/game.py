@@ -22,7 +22,7 @@ class Game(object):
                 break
         if len(self.active_cards) == 0:
             self.active_cards = deepcopy(active_cards)
-        self.health.append(data["health"])
+        self.health.append(data["health"].split("%")[0][:-2])
         self.professions.append(data["profession"])
 
     def get_promt(self, template):
