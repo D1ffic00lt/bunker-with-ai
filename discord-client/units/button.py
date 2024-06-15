@@ -126,6 +126,7 @@ class ControlButtons(discord.ui.View):
     @discord.ui.button(label="Активная Карта", style=discord.ButtonStyle.success, emoji="🎴")
     async def action_card_callback(self, inter: discord.Interaction, button: discord.Button):
         button.disabled = True
+        # TODO
         await inter.message.edit(view=self)
         await self.send("action_card", inter.user.id)
         async with httpx.AsyncClient() as client:

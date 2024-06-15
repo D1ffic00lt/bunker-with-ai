@@ -139,7 +139,7 @@ async def leave_game(game_code, user_id):
             return make_response(jsonify({"status": True}), 201)
 
 
-@app.route('/bunker/api/v1/use-active-card/<game_code>/<int:user_id>', methods=['POST'])
+@app.route('/bunker/api/v1/use-active-card/<game_code>/<int:user_id>', methods=['POST'])  # TODO
 async def use_active_card(game_code, user_id):
     async with create_session() as session:
         async with session.begin():
@@ -207,6 +207,46 @@ async def use_active_card(game_code, user_id):
                 room.additional_information += "заброшенная больница неподалёку; "
             elif active_card["id"] == 14:
                 room.additional_information += "заброшенный военный лагерь неподалёку; "
+            elif active_card["id"] == 2:
+                data = request.json  # {user_id: ...}
+                player_card_attr = reg.findall(active_card["card"])[0]
+                users = await session.execute(select(User).where(
+                    and_(User.get_attr(player_card_attr, revealed=True), User.active, User.room_id == room_id)
+                ))
+                users = users.scalars().all()
+                player = None
+                player_to_switch = None
+                for i in users:
+                    if i.user_id == user_id:
+                        player = i
+                    if i.user_id == data["user_id"]:
+                        player_to_switch = i
+                users = list(filter(lambda x: x.user_id != user_id, users))
+                if not users or player is None or player_to_switch is None:
+                    return make_response({"status": False}, 404)
+                attr = player_to_switch.get_attr(player_card_attr)
+
+                player_to_switch.set_attr(player_card_attr, player.get_attr(player_card_attr))
+                player.set_attr(player_card_attr, attr)
+                player_to_switch.switches += 1
+                player.switches += 1
+            elif active_card["id"] == 6:
+                data = request.json
+                player_to_switch = None
+                player_card_attr = reg.findall(active_card["card"])[0]
+                users = await session.execute(select(User).where(
+                    and_(User.get_attr(player_card_attr, revealed=True), User.active, User.room_id == room_id)
+                ))
+                users = users.scalars().all()
+                for i in users:
+                    if i.user_id == data["user_id"]:
+                        player_to_switch = i
+                users = list(filter(lambda x: x.user_id != user_id, users))
+                if not users or player_to_switch is None:
+                    return make_response({"status": False}, 404)
+                
+                player_to_switch.set_attr("health", "Здоров")
+                player_to_switch.switches += 1
 
             await session.commit()
             return make_response({"status": True}, 201)
