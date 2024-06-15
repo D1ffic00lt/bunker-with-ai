@@ -1,4 +1,4 @@
-FROM python:3.11
+FROM huecker.io/library/python:3.11
 
 WORKDIR api/
 

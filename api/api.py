@@ -293,7 +293,7 @@ async def bunker_result():
 
 @app.route("/bunker/api/v1/user/add-vote/<game_code>/<int:user_id>", methods=["PUT"])
 async def add_vote(game_code, user_id):
-    print(user_id)
+
     async with create_session() as session:
         async with session.begin():
             room_id = await session.execute(
@@ -309,7 +309,7 @@ async def add_vote(game_code, user_id):
             user = user.scalars().first()
             if user is None:
                 return make_response(jsonify({"status": False}), 404)
-            print(user.to_json())
+
             user.number_of_votes += 1
             # await session.execute(
             #     update(User).values(number_of_votes=user.number_of_votes + 1).where(
