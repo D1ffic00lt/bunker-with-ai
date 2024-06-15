@@ -29,6 +29,39 @@ class Game(commands.Cog):
         }
         logging.info(f"Game (Slash) connected")
 
+    @app_commands.command(name="reset-votes", description="Обнуляет голосования")
+    async def __reset_votes(self, inter: discord.Interaction, game_code: str):
+        if not self.check_role_exists(inter.user.id):
+            return
+        async with httpx.AsyncClient() as client:
+            try:
+                game = await client.get("http://api:9462/bunker/api/v1/get-game/{}".format(game_code), timeout=60)
+                if game.status_code // 100 in [4, 5]:
+                    await inter.response.send_message("Что-то пошло не так...")
+                    return
+            except httpx.TimeoutException:
+                await inter.response.send_message("Что-то пошло не так...")
+                return
+            game = game.json()
+        if game["host_id"] != inter.user.id:
+            await inter.response.send_message("Что-то пошло не так...")
+            return  # TODO
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.put(
+                    "http://api:9462/bunker/api/v1/user/reset-vote/{}".format(game_code),
+                    timeout=60
+                )
+                if response.status_code // 100 in [4, 5]:
+                    await inter.response.send_message("Что-то пошло не так...")
+                    return
+            except httpx.TimeoutException:
+                await inter.response.send_message("Что-то пошло не так...")
+                return
+        await inter.response.send_message("Голосование перезагружено")
+        message = await inter.original_response()
+        await message.delete(delay=2)
+
     @app_commands.command(name="new-game", description="Создать новую игру")
     async def __new_game(self, inter: discord.Interaction) -> None:
         if not self.check_role_exists(inter.user.id):
@@ -140,6 +173,10 @@ class Game(commands.Cog):
             except httpx.TimeoutException:
                 await inter.response.send_message("Что-то пошло не так...")
                 return
+            game = game.json()
+            if game["host_id"] != inter.user.id:
+                await inter.response.send_message("Что-то пошло не так...")
+                return  # TODO
             try:
                 start = await client.post("http://api:9462/bunker/api/v1/start-game/{}".format(game_code), timeout=60)
                 if start.status_code // 100 in [4, 5]:
@@ -148,10 +185,6 @@ class Game(commands.Cog):
             except httpx.TimeoutException:
                 await inter.response.send_message("Что-то пошло не так...")
                 return
-            game = game.json()
-        if game["host_id"] != inter.user.id:
-            await inter.response.send_message("Что-то пошло не так...")
-            return  # TODO
         game_gesc = (f"**Сценарий**:\n```\n{game['catastrophe']}\n```\n"
                      f"**Бункер**:\n```\n{game['bunker']}\n```\n"
                      f"**Угроза**:\n```\n{game['threat']}\n```")
