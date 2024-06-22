@@ -164,7 +164,7 @@ async def use_active_card(game_code, user_id):
                     active_card = active_card.json()
             except httpx.TimeoutException:
                 return make_response(jsonify({"status": False}), 404)
-            if not request.json["switch"]:
+            if not request.json["switch"] and active_card["id"] in [2, 6]:
                 return make_response(jsonify({"status": False}), 424)
             if active_card["id"] == 3:
                 player_card_attr = reg.findall(active_card["card"])[0]

@@ -13,6 +13,8 @@ class ActiveCardButton(discord.ui.Button):
             self.disabled = True
             return
         if self.custom_id.split("/")[0] == "stop_vote":
+            self.view.original_view.messages = []
+            await self.view.original_message.edit(view=self.view.original_view)
             try:
                 await self.view.message.delete()
             except discord.errors.HTTPException:
@@ -39,6 +41,11 @@ class ActiveCardButton(discord.ui.Button):
                             "user_id": self.custom_id.split("/")[0], "switch": True
                         }
                     )
+                    for i in self.view.original_view.children:
+                        if i.label == "Активная Карта":
+                            i.disabled = True
+                            break
+                    await self.view.original_message.edit(view=self.view.original_view)
                     if response.status_code // 100 in [4, 5]:
                         message = await inter.user.send("Что-то пошло не так...")
                         await message.delete(delay=5)
@@ -49,6 +56,7 @@ class ActiveCardButton(discord.ui.Button):
                     return
             await self.view.message.delete()
             message = await inter.user.send("Использовано")
+            self.disabled = True
             await message.delete(delay=2)
 
 
@@ -56,5 +64,7 @@ class ActiveCardControlButtons(discord.ui.View):
     def __init__(self, code, bot):
         super().__init__(timeout=None)
         self.message = None
+        self.original_message = None
+        self.original_view = None
         self.game_code = code
         self.bot = bot

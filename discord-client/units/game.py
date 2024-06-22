@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import logging
+import asyncio
 import discord
 import httpx
 
@@ -27,7 +27,6 @@ class Game(commands.Cog):
             "phobia": "Фобия",
             "profession": "Профессия"
         }
-        logging.info(f"Game (Slash) connected")
 
     @app_commands.command(name="reset-votes", description="Обнуляет голосования")
     async def __reset_votes(self, inter: discord.Interaction, game_code: str):
@@ -205,6 +204,7 @@ class Game(commands.Cog):
             if player["user_id"] == game["host_id"]:
                 view.add_item(StartVoteButton(label="Начать голосование"))
             await user.send(user_desc, view=view)
+            await asyncio.sleep(0.5)
 
     @app_commands.command(name="get-result", description="Получить итоги игры")
     async def __get_result(self, inter: discord.Interaction, game_code: str) -> None:
@@ -259,6 +259,13 @@ class Game(commands.Cog):
             await user.send(surface_result)
         await inter.edit_original_response(
             content=f"Отправлено."
+        )
+
+    @app_commands.command(name="get-frame", description="Получить рамку")
+    async def __get_frame(self, inter: discord.Interaction, member: discord.Member) -> None:
+        await inter.response.send_message(
+            f"Рамка {member.mention}: ||http://127.0.0.1:5001/api/v1/user-frame/{inter.user.id}/{member.id}||",
+            ephemeral=True
         )
 
     @app_commands.command(name="leave", description="Покинуть игру")

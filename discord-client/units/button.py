@@ -1,6 +1,3 @@
-import discord
-import httpx
-
 from .active_cards import *
 
 
@@ -146,7 +143,18 @@ class ControlButtons(discord.ui.View):
                     json={"user_id": inter.user.id, "switch": False},
                 )
                 if response.status_code == 424:
+                    button.disabled = False
+                    # TODO
+
+                    await inter.message.edit(view=self)
+                    if len(self.messages) != 0:
+                        await inter.response.send_message("Что-то пошло не так...")
+                        message = await inter.original_response()
+                        await message.delete(delay=5)
+                        return
                     view = ActiveCardControlButtons(self.game_code, self.bot)
+                    view.original_view = self
+                    view.original_message = inter.message
                     for p in game["users"]:
                         user: discord.User = await self.bot.fetch_user(p["user_id"])
                         button = ActiveCardButton(
@@ -162,6 +170,7 @@ class ControlButtons(discord.ui.View):
                     view.add_item(button)
                     message = await inter.user.send("Выберите игрока", view=view)
                     view.message = message
+                    self.messages.append(message)
                     await inter.response.defer()
                     return
                 if response.status_code // 100 in [4, 5]:
@@ -175,6 +184,7 @@ class ControlButtons(discord.ui.View):
                 await message.delete(delay=5)
                 return
         await inter.response.send_message("Использовано")
+        await self.send("action_card", inter.user.id)
         message = await inter.original_response()
         await message.delete(delay=5)
 

@@ -137,8 +137,8 @@ class Generator(object):
             weights=[0.5, 0.5, 0.1, 0.1]
         )[0]
         result["gender"] = gender
-        # result["action_card"] = active_card["card"]
-        result["action_card"] = 'Вылечить здоровье игроку на выбор, кроме себя'
+        result["action_card"] = active_card["card"]
+        # result["action_card"] = 'Вылечить здоровье игроку на выбор, кроме себя'
         result["phobia"] = random.choice(phobias)
         result["health"] += f" {random.randint(0, 100)}%" + (', бесплоден' if random.randint(0, 100) >= 90 else '')
         experience = random.randint(0, 25)
