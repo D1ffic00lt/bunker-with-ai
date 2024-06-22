@@ -25,8 +25,8 @@ services:
       FLASK_RUN_PORT: 9462
       FLASK_RUN_HOST: "0.0.0.0"
       FLASK_APP: "api.py"
-    ports:
-      - "9462:9462"
+#    ports:
+#      - "9462:9462"
     depends_on:
       - generator
     volumes:
