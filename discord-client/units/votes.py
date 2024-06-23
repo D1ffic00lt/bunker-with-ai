@@ -1,5 +1,3 @@
-import random
-
 import discord
 import httpx
 
@@ -7,15 +5,6 @@ from discord import Interaction
 
 
 class StartVoteButton(discord.ui.Button):
-    @staticmethod
-    def generate_random_code() -> str:
-        code_chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-        code = ''
-        for i in range(0, 10):
-            slice_start = random.randint(0, len(code_chars) - 1)
-            code += code_chars[slice_start: slice_start + 1]
-        return "/" + code
-
     async def callback(self, inter: discord.Interaction):
 
         await inter.response.defer()
@@ -37,10 +26,10 @@ class StartVoteButton(discord.ui.Button):
             view = VoteControlButtons(self.view.game_code, self.view.bot)
             for p in game["users"]:
                 user: discord.User = await self.view.bot.fetch_user(p["user_id"])
-                button = VoteButton(label=user.name, custom_id=str(user.id) + self.generate_random_code(), emoji="🪦")
+                button = VoteButton(label=user.name, custom_id=str(user.id) + self.view.bot.generate_random_code(), emoji="🪦")
                 if not p["active"]:
                     button.disabled = True
-                    button.custom_id = "-1" + self.generate_random_code()
+                    button.custom_id = "-1" + self.view.bot.generate_random_code()
                 view.add_item(button)
             if not player["active"] or player["user_id"] == game["host_id"]:
                 continue
@@ -50,12 +39,16 @@ class StartVoteButton(discord.ui.Button):
         view = VoteControlButtons(self.view.game_code, self.view.bot)
         for p in game["users"]:
             user: discord.User = await self.view.bot.fetch_user(p["user_id"])
-            button = VoteButton(label=user.name, custom_id=str(user.id) + self.generate_random_code(), emoji="🪦")
+            button = VoteButton(
+                label=user.name, custom_id=str(user.id) + self.view.bot.generate_random_code(), emoji="🪦"
+            )
             if not p["active"]:
                 button.disabled = True
-                button.custom_id = "-1" + self.generate_random_code()
+                button.custom_id = "-1" + self.view.bot.generate_random_code()
             view.add_item(button)
-        button = VoteButton(label="Закончить голосование", custom_id="stop_vote" + self.generate_random_code())
+        button = VoteButton(
+            label="Закончить голосование", custom_id="stop_vote" + self.view.bot.generate_random_code()
+        )
         view.add_item(button)
         message = await inter.followup.send("Голосование", view=view)
         messages.append(message)

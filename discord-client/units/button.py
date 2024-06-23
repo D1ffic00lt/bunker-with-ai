@@ -1,5 +1,4 @@
-import discord
-import httpx
+from .active_cards import *
 
 
 class ControlButtons(discord.ui.View):
@@ -126,20 +125,66 @@ class ControlButtons(discord.ui.View):
     @discord.ui.button(label="Активная Карта", style=discord.ButtonStyle.success, emoji="🎴")
     async def action_card_callback(self, inter: discord.Interaction, button: discord.Button):
         button.disabled = True
+        # TODO
         await inter.message.edit(view=self)
-        await self.send("action_card", inter.user.id)
+        # await self.send("action_card", inter.user.id)
         async with httpx.AsyncClient() as client:
             try:
-                response = await client.post(
-                    "http://api:9462/bunker/api/v1/use-active-card/{}/{}".format(self.game_code, inter.user.id)
+                game = await client.get(
+                    "http://api:9462/bunker/api/v1/get-game/{}".format(self.game_code),
+                    timeout=60
                 )
+                if game.status_code // 100 in [4, 5]:
+                    await inter.response.send_message("Что-то пошло не так...")
+                    return
+                game = game.json()
+                response = await client.post(
+                    "http://api:9462/bunker/api/v1/use-active-card/{}/{}".format(self.game_code, inter.user.id),
+                    json={"user_id": inter.user.id, "switch": False},
+                )
+                if response.status_code == 424:
+                    button.disabled = False
+                    # TODO
+
+                    await inter.message.edit(view=self)
+                    if len(self.messages) != 0:
+                        await inter.response.send_message("Что-то пошло не так...")
+                        message = await inter.original_response()
+                        await message.delete(delay=5)
+                        return
+                    view = ActiveCardControlButtons(self.game_code, self.bot)
+                    view.original_view = self
+                    view.original_message = inter.message
+                    for p in game["users"]:
+                        user: discord.User = await self.bot.fetch_user(p["user_id"])
+                        button = ActiveCardButton(
+                            label=user.name, custom_id=str(user.id) + self.bot.generate_random_code(), emoji="🪦"
+                        )
+                        if not p["active"] or p["user_id"] == inter.user.id:
+                            button.disabled = True
+                            button.custom_id = "-1" + self.bot.generate_random_code()
+                        view.add_item(button)
+                    button = ActiveCardButton(
+                        label="Отмена", custom_id="stop_vote" + self.bot.generate_random_code()
+                    )
+                    view.add_item(button)
+                    message = await inter.user.send("Выберите игрока", view=view)
+                    view.message = message
+                    self.messages.append(message)
+                    await inter.response.defer()
+                    return
                 if response.status_code // 100 in [4, 5]:
                     await inter.response.send_message("Что-то пошло не так...")
+                    message = await inter.original_response()
+                    await message.delete(delay=5)
                     return
             except httpx.TimeoutException:
                 await inter.response.send_message("Что-то пошло не так...")
+                message = await inter.original_response()
+                await message.delete(delay=5)
                 return
         await inter.response.send_message("Использовано")
+        await self.send("action_card", inter.user.id)
         message = await inter.original_response()
         await message.delete(delay=5)
 

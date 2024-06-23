@@ -131,12 +131,14 @@ class Generator(object):
 
         result["age"] = round(self.get_age())
         active_card = self.games[game_code].active_card
+        # active_card = {'card': 'Обменяться картой "Здоровье" с игроком на выбор', 'id': 2},
         gender = random.choices(
             population=["Мужчина", "Женщина", "Гуманоид", "Андроид"],
-            weights=[0.5, 0.5, 0.08, 0.08]
+            weights=[0.5, 0.5, 0.1, 0.1]
         )[0]
         result["gender"] = gender
         result["action_card"] = active_card["card"]
+        # result["action_card"] = 'Вылечить здоровье игроку на выбор, кроме себя'
         result["phobia"] = random.choice(phobias)
         result["health"] += f" {random.randint(0, 100)}%" + (', бесплоден' if random.randint(0, 100) >= 90 else '')
         experience = random.randint(0, 25)

@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
+import random
+
 import discord
 
 from discord.ext import commands
@@ -29,3 +31,12 @@ class BunkerBOT(commands.Bot):
         elif isinstance(error, commands.CommandNotFound):
             pass
         logging.error(error)
+
+    @staticmethod
+    def generate_random_code() -> str:
+        code_chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+        code = ''
+        for i in range(0, 10):
+            slice_start = random.randint(0, len(code_chars) - 1)
+            code += code_chars[slice_start: slice_start + 1]
+        return "/" + code
