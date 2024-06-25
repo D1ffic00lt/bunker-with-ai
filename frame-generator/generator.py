@@ -64,19 +64,19 @@ class Generator(object):
         image.text((340, 210), age, fill="#f6de8a", font=self.main_info_font)
 
         offset = self.height - 150
-        for line in textwrap.wrap(luggage[:70], width=30)[::-1]:
+        for line in textwrap.wrap(luggage[:70], width=25)[::-1]:
             image.text(
                 (self.width - self.info_font.getlength(line) - 120, offset), line, font=self.info_font, fill="#f32b7b"
             )
             offset -= 60
         offset -= 10
-        for line in textwrap.wrap(fact2[:70], width=30)[::-1]:
+        for line in textwrap.wrap(fact2[:70], width=25)[::-1]:
             image.text(
                 (self.width - self.info_font.getlength(line) - 120, offset), line, font=self.info_font, fill="#54e6a3"
             )
             offset -= 60
         offset -= 10
-        for line in textwrap.wrap(fact1[:70], width=30)[::-1]:
+        for line in textwrap.wrap(fact1[:70], width=25)[::-1]:
             image.text(
                 (self.width - self.info_font.getlength(line) - 120, offset), line, font=self.info_font, fill="#5bec5f"
             )
