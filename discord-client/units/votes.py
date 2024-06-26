@@ -1,3 +1,6 @@
+import asyncio
+from copy import deepcopy
+
 import discord
 import httpx
 
@@ -22,19 +25,30 @@ class StartVoteButton(discord.ui.Button):
                 return
             game = game.json()
         messages = []
+        users = []
+        for i in game["users"]:
+            user: discord.User = await self.view.bot.fetch_user(i["user_id"])
+            users.append((user, i["active"]))
+            await asyncio.sleep(0.2)
+        # FIXME: PLS
         for player in game["users"]:
             view = VoteControlButtons(self.view.game_code, self.view.bot)
-            for p in game["users"]:
-                user: discord.User = await self.view.bot.fetch_user(p["user_id"])
-                button = VoteButton(label=user.name, custom_id=str(user.id) + self.view.bot.generate_random_code(), emoji="🪦")
-                if not p["active"]:
+            for p in users:
+                button = VoteButton(
+                    label=p[0].name,
+                    custom_id=str(p[0].id) + self.view.bot.generate_random_code(),
+                    emoji="🪦"
+                )
+                if not p[1]:
                     button.disabled = True
                     button.custom_id = "-1" + self.view.bot.generate_random_code()
                 view.add_item(button)
+
             if not player["active"] or player["user_id"] == game["host_id"]:
                 continue
             user: discord.User = await self.view.bot.fetch_user(player["user_id"])
             message = await user.send("Голосование!", view=view)
+            await asyncio.sleep(0.5)
             messages.append(message)
         view = VoteControlButtons(self.view.game_code, self.view.bot)
         for p in game["users"]:
@@ -46,6 +60,7 @@ class StartVoteButton(discord.ui.Button):
                 button.disabled = True
                 button.custom_id = "-1" + self.view.bot.generate_random_code()
             view.add_item(button)
+            await asyncio.sleep(0.2)
         button = VoteButton(
             label="Закончить голосование", custom_id="stop_vote" + self.view.bot.generate_random_code()
         )
