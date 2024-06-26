@@ -12,7 +12,7 @@ class Generator(object):
         self.template_image = Image.open(template_path)
         self.width, self.height = self.template_image.size
         self.main_info_font = ImageFont.truetype(font_path, 100, encoding="unic")
-        self.info_font = ImageFont.truetype(font_path, 60, encoding="unic")
+        self.info_font = ImageFont.truetype(font_path, 65, encoding="unic")
         self.flag = Image.open(flag_path).resize((90, 90)).convert("RGBA")
 
     def generate(self, data):
