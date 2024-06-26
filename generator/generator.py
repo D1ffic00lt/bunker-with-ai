@@ -22,6 +22,16 @@ class Generator(object):
         "messages": []
     }
 
+    @staticmethod
+    def age_suffix(age):
+        if 11 <= age % 100 <= 19:
+            return f"{age} лет"
+        elif age % 10 == 1:
+            return f"{age} год"
+        elif 2 <= age % 10 <= 4:
+            return f"{age} года"
+        return f"{age} лет"
+
     def __init__(self, token: str):
         self.__token = token
         self.__auth_headers = asyncio.run(self.__get_iam_header())
@@ -145,7 +155,7 @@ class Generator(object):
         while result["age"] - experience < 16:
             experience = random.randint(0, 25)
         result["age"] = str(result["age"])
-        result["age"] += f" стаж: {experience} лет (года)"
+        result["age"] += f" стаж: {experience} {self.age_suffix(experience)}"
         return result
 
     async def generate_bunker(self):
