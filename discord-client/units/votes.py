@@ -1,6 +1,4 @@
 import asyncio
-from copy import deepcopy
-
 import discord
 import httpx
 
