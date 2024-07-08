@@ -3,8 +3,9 @@ import re
 import json
 import random
 import httpx
+from datetime import datetime
 import numpy as np
-
+from pprint import pprint
 from config import *
 from game import Game
 from copy import deepcopy
@@ -22,6 +23,14 @@ class Generator(object):
         "messages": []
     }
 
+    def __init__(self, token: str):
+        self.__token = token
+        self.__auth_headers = asyncio.run(self.__get_iam_header())
+        self.reg = re.compile("{(.*?)}")
+        self.list_reg = re.compile(r"\[\s*['\"][^'\"]*['\"]\s*(?:,\s*['\"][^'\"]*['\"]\s*)*]")
+        self.tokens = 0
+        self.games: dict[str, Game] = {}
+
     @staticmethod
     def age_suffix(age):
         if 11 <= age % 100 <= 19:
@@ -32,17 +41,59 @@ class Generator(object):
             return f"{age} года"
         return f"{age} лет"
 
-    def __init__(self, token: str):
-        self.__token = token
-        self.__auth_headers = asyncio.run(self.__get_iam_header())
-        self.reg = re.compile("{(.*?)}")
-        self.tokens = 0
-        self.games: dict[str, Game] = {}
-
     @staticmethod
     def get_age():
         x = random.random()
         return int((np.exp(3 * np.log2(x + 1)) + 0.9) / np.exp(-1.2 * x) + 17)
+
+    async def generate_data_list(self, model_data):
+        data = deepcopy(self.TEMPLATE)
+        data["completionOptions"]["temperature"] = 1
+        data["messages"].append(
+            {
+                "role": "system",
+                "text": default_template
+            }
+        )
+        data["messages"].append(
+            {
+                "role": "user",
+                "text": f"seed: {random.randint(2321312, 123123123)}, сгенерируй 20 {model_data} по шаблону:\n"
+                        f"```json\n[\n\telement1, \n\telement2, \n\telement3]\n```\n"
+                        f"ВАЖНО:\n"
+                        f"- генерируй ОБЯЗАТЕЛЬНО ПО ШАБЛОНУ ИНАЧЕ ВСЁ СЛОМАЕТСЯ\n"
+                        f"- пиши без дополнительных комментариев\n"
+                        f"- сгенерируй ТОЛЬКО один массив\n"
+                        f"- максимум должно быть 3 слова в одном элементе\n"
+                        f"- старайся генерировать разнообразно"
+            }
+        )
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                self.URL,
+                json=data,
+                headers=self.__auth_headers, timeout=60
+            )
+        if resp.status_code == 401:
+            self.__auth_headers = await self.__get_iam_header()
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    self.URL,
+                    json=data,
+                    headers=self.__auth_headers, timeout=60
+                )
+        if resp.status_code != 200:
+            raise KeyError(resp.text)
+        self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
+        result = resp.json()["result"]["alternatives"][-1]["message"]["text"]
+        # print(result)
+        result = result.replace("\n", "")
+        result = result.replace("\t", "")
+        result = result.replace("«", "\"")
+        result = result.replace("»", "\"")
+        result = self.list_reg.findall(result)
+        result = json.loads(result[0])
+        return result
 
     async def __get_iam_header(self):
         async with httpx.AsyncClient() as client:
@@ -100,6 +151,57 @@ class Generator(object):
     async def generate_player(self, game_code):
         if game_code not in self.games:
             self.games[game_code] = Game()
+            self.games[game_code].unique_phobias = deepcopy(phobias)
+            professions = []
+            limit = 4
+            while not professions:
+                try:
+                    professions = await self.generate_data_list(
+                        "профессий"
+                    )
+                    if len(professions) < 15:
+                        limit -= 1
+                        professions = []
+                except (KeyError, json.decoder.JSONDecodeError, IndexError):
+                    limit -= 1
+                    professions = []
+                if limit == 0:
+                    raise KeyError()
+            self.games[game_code].unique_professions = professions
+
+            healths = []
+            limit = 4
+            while not healths:
+                try:
+                    healths = await self.generate_data_list(
+                        "Заболеваний, которыми можно болеть долго, состоящих из максимум 2 слов, "
+                    )
+                    if len(healths) < 15:
+                        healths = []
+                        limit -= 1
+                except (KeyError, json.decoder.JSONDecodeError, IndexError):
+                    limit -= 1
+                    healths = []
+                if limit == 0:
+                    raise KeyError()
+            self.games[game_code].unique_health = healths
+
+            hobbies = []
+            limit = 4
+            while not hobbies:
+                try:
+                    hobbies = await self.generate_data_list(
+                        "Хобби, можешь использовать абсурдные хобби, "
+                    )
+                    if len(hobbies) < 15:
+                        hobbies = []
+                        limit -= 1
+                except (KeyError, json.decoder.JSONDecodeError, IndexError):
+                    limit -= 1
+                    hobbies = []
+                if limit == 0:
+                    raise KeyError()
+            self.games[game_code].unique_hobbies = hobbies
         data = deepcopy(self.TEMPLATE)
         data["completionOptions"]["temperature"] = 1
         data["messages"].append(
@@ -149,13 +251,16 @@ class Generator(object):
         result["gender"] = gender
         result["action_card"] = active_card["card"]
         # result["action_card"] = 'Вылечить здоровье игроку на выбор, кроме себя'
-        result["phobia"] = random.choice(phobias)
+        result["phobia"] = self.games[game_code].get_unique_phobia().capitalize()
+        result["health"] = self.games[game_code].get_unique_health().capitalize()
+        result["profession"] = self.games[game_code].get_unique_profession().capitalize()
+        result["hobby"] = self.games[game_code].get_unique_hobby().capitalize()
         result["health"] += f" {random.randint(0, 100)}%" + (', бесплоден' if random.randint(0, 100) >= 90 else '')
         experience = random.randint(0, 25)
         while result["age"] - experience < 16:
             experience = random.randint(0, 25)
         result["age"] = str(result["age"])
-        result["age"] += f" стаж: {experience} {self.age_suffix(experience)}"
+        result["age"] += f" стаж: {self.age_suffix(experience)}"
         return result
 
     async def generate_bunker(self):
@@ -282,3 +387,22 @@ class Generator(object):
         result = self.reg.findall(result)
         result = json.loads(f"{'{'}{result[0]}{'}'}")
         return result
+
+
+if __name__ == "__main__":
+    gen = Generator("")
+    gen.TEMPLATE["modelUri"] = ""
+    # Заболеваний, которыми можно болеть долго, состоящих из максимум 2 слов,
+    # Профессий, можешь использовать фантастические профессии, кроме космоса,
+    # f"Хобби, можешь использовать абсурдные хобби, "
+    global_start = datetime.now()
+    print(f"Generation started at {global_start:%Y-%m-%d %H:%M:%S%z}")
+    for i in range(12):
+        start_time = datetime.now()
+        print(f"--------- {i + 1}/12 generations starts at {start_time:%Y-%m-%d %H:%M:%S%z} ---------")
+        pprint(asyncio.run(gen.generate_player("123")))
+        stop_time = datetime.now()
+        print(f"--------- {i + 1}/12 generations end at {stop_time:%Y-%m-%d %H:%M:%S%z} ---------")
+        print(f"Time passed: {stop_time - start_time}")
+    print(f"Full generation took: {datetime.now() - global_start}")
+

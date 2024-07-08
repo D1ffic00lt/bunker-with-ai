@@ -26,8 +26,8 @@ async def generate_catastrophe():
         except (KeyError, json.decoder.JSONDecodeError):
             limit -= 1
             cat = {}
-    if limit == 0:
-        return make_response(jsonify({"status": False}), 501)
+        if limit == 0:
+            return make_response(jsonify({"status": False}), 501)
     return make_response(jsonify(cat), 201)
 
 
@@ -41,8 +41,8 @@ async def generate_bunker():
         except (KeyError, json.decoder.JSONDecodeError):
             limit -= 1
             bunker = {}
-    if limit == 0:
-        return make_response(jsonify({"status": False}), 501)
+        if limit == 0:
+            return make_response(jsonify({"status": False}), 501)
     return make_response(jsonify(bunker), 201)
 
 
@@ -61,8 +61,8 @@ async def generate_player(game_code):
         except (KeyError, json.decoder.JSONDecodeError, IndexError):
             limit -= 1
             user_data = {}
-    if limit == 0:
-        return make_response(jsonify({"status": False}), 501)
+        if limit == 0:
+            return make_response(jsonify({"status": False}), 501)
     gen.games[game_code].add_user_data(user_data)
     return make_response(jsonify(user_data), 201)
 
@@ -103,6 +103,6 @@ async def generate_result():
         except (KeyError, json.decoder.JSONDecodeError):
             limit -= 1
             result = {}
-    if limit == 0:
-        return make_response(jsonify({"status": False}), 501)
+        if limit == 0:
+            return make_response(jsonify({"status": False}), 501)
     return make_response(jsonify(result), 201)
