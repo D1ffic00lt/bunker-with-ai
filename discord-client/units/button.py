@@ -171,7 +171,10 @@ class ControlButtons(discord.ui.View):
                     message = await inter.user.send("Выберите игрока", view=view)
                     view.message = message
                     self.messages.append(message)
-                    await inter.response.defer()
+                    try:
+                        await inter.response.defer()
+                    except discord.errors.NotFound:
+                        pass
                     return
                 if response.status_code // 100 in [4, 5]:
                     await inter.response.send_message("Что-то пошло не так...")
