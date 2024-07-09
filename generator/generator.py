@@ -3,8 +3,9 @@ import re
 import json
 import random
 import httpx
-from datetime import datetime
 import numpy as np
+
+from datetime import datetime
 from pprint import pprint
 from config import *
 from game import Game
@@ -405,4 +406,3 @@ if __name__ == "__main__":
         print(f"--------- {i + 1}/12 generations end at {stop_time:%Y-%m-%d %H:%M:%S%z} ---------")
         print(f"Time passed: {stop_time - start_time}")
     print(f"Full generation took: {datetime.now() - global_start}")
-
