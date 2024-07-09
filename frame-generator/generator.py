@@ -5,15 +5,17 @@ from copy import deepcopy
 
 
 class Generator(object):
-    def __init__(self, *, template_path: str, font_path: str, flag_path: str):
+    def __init__(self, *, template_path: str, font_path: str, flag_path: str, skull_path: str):
         self.template_path = template_path
         self.font_path = font_path
         self.flag_path = flag_path
+        self.skull_path = skull_path
         self.template_image = Image.open(template_path)
         self.width, self.height = self.template_image.size
         self.main_info_font = ImageFont.truetype(font_path, 100, encoding="unic")
         self.info_font = ImageFont.truetype(font_path, 60, encoding="unic")
         self.flag = Image.open(flag_path).resize((90, 90)).convert("RGBA")
+        self.skull = Image.open(skull_path).resize((150, 150)).convert("RGBA")
 
     def generate(self, data):
         gender = data["gender"][0] if data["gender_revealed"] else "?"
@@ -28,6 +30,7 @@ class Generator(object):
         phobia = data["phobia"].lower() if data["phobia_revealed"] else "фобия"
         hobby = data["hobby"].lower() if data["hobby_revealed"] else "хобби"
         votes = data["number_of_votes"]
+        active = data["active"]
         if votes < 0:
             votes = 0
 
@@ -84,6 +87,8 @@ class Generator(object):
         step = 100
         for i in range(votes):
             template_image.paste(self.flag, (380 + (i + 1) * step, 225), self.flag)
+        if not active:
+            template_image.paste(self.skull, (template_image.size[0] - 150 - 100, 100), self.skull)
         return template_image
 
 
@@ -99,11 +104,12 @@ if __name__ == "__main__":
         "fact1_revealed": False,        "fact1": "",
         "fact2_revealed": False,        "fact2": "",
         "phobia_revealed": False,       "phobia": "",
-        "active": True,                 "number_of_votes": 0
+        "active": False,                "number_of_votes": 1
     }
     gen = Generator(
         template_path="./static/SQUADBUNKERWEBKA.png",
         font_path="./static/Gilroy Extra Bold.otf",
-        flag_path="./static/red_flag.png"
+        flag_path="./static/red_flag.png",
+        skull_path="./static/red_skull.png"
     )
     gen.generate(test_data).save("123.png")

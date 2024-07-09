@@ -8,7 +8,8 @@ app = Flask(__name__)
 gen = Generator(
     template_path="./static/SQUADBUNKERWEBKA.png",
     font_path="./static/Gilroy Extra Bold.otf",
-    flag_path="./static/red_flag.png"
+    flag_path="./static/red_flag.png",
+    skull_path="./static/red_skull.png"
 )
 
 
