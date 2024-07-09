@@ -246,8 +246,8 @@ class Generator(object):
         active_card = self.games[game_code].active_card
         # active_card = {'card': 'Обменяться картой "Здоровье" с игроком на выбор', 'id': 2},
         gender = random.choices(
-            population=["Мужчина", "Женщина", "Гуманоид", "Андроид"],
-            weights=[0.5, 0.5, 0.1, 0.1]
+            population=["Мужчина", "Женщина", "Гуманоид", "Андроид", "Вампир"],
+            weights=[0.5, 0.5, 0.1, 0.1, 0.05]
         )[0]
         result["gender"] = gender
         result["action_card"] = active_card["card"]
