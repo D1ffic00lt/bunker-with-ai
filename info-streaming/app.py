@@ -19,7 +19,8 @@ not_found_frame_data = {
     "fact2_revealed": False,
     "phobia_revealed": False,
     "hobby_revealed": False,
-    "number_of_votes": 0
+    "number_of_votes": 0,
+    "active": True
 }
 
 
