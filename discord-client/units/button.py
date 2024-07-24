@@ -193,12 +193,17 @@ class ControlButtons(discord.ui.View):
 
     @discord.ui.button(label="Выйти", style=discord.ButtonStyle.red, emoji="⚰️")  # 🪦
     async def exit_callback(self, inter: discord.Interaction, button: discord.Button):
+        is_host = False
         for i in self.children:
+            if i.label == "Начать голосование":
+                is_host = True
+                continue
             i.disabled = True
 
         button.style = discord.ButtonStyle.secondary
         await inter.message.edit(view=self)
-        self.stop()
+        if not is_host:
+            self.stop()
 
         async with httpx.AsyncClient() as client:
             try:
