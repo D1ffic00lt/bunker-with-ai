@@ -391,8 +391,12 @@ class Generator(object):
 
 
 if __name__ == "__main__":
-    gen = Generator("")
-    gen.TEMPLATE["modelUri"] = ""
+    with open("../secrets/gpt-reserve/token.txt") as file:
+        model_token = file.read().strip()
+    with open("../secrets/gpt-reserve/model_uri.txt") as file:
+        uri = file.read().strip()
+    gen = Generator(model_token)
+    gen.TEMPLATE["modelUri"] = uri
     # Заболеваний, которыми можно болеть долго, состоящих из максимум 2 слов,
     # Профессий, можешь использовать фантастические профессии, кроме космоса,
     # f"Хобби, можешь использовать абсурдные хобби, "
