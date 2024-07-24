@@ -29,7 +29,10 @@ class StartVoteButton(discord.ui.Button):
             users.append((user, i["active"]))
             await asyncio.sleep(0.2)
         # FIXME: PLS
+        host_active = False
         for player in game["users"]:
+            if player["user_id"] == game["host_id"]:
+                host_active = player["active"]
             view = VoteControlButtons(self.view.game_code, self.view.bot)
             for p in users:
                 button = VoteButton(
@@ -41,7 +44,6 @@ class StartVoteButton(discord.ui.Button):
                     button.disabled = True
                     button.custom_id = "-1" + self.view.bot.generate_random_code()
                 view.add_item(button)
-
             if not player["active"] or player["user_id"] == game["host_id"]:
                 continue
             user: discord.User = await self.view.bot.fetch_user(player["user_id"])
@@ -54,7 +56,7 @@ class StartVoteButton(discord.ui.Button):
             button = VoteButton(
                 label=user.name, custom_id=str(user.id) + self.view.bot.generate_random_code(), emoji="🪦"
             )
-            if not p["active"]:
+            if not p["active"] or not host_active:
                 button.disabled = True
                 button.custom_id = "-1" + self.view.bot.generate_random_code()
             view.add_item(button)
