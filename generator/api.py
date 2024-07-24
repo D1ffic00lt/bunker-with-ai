@@ -27,7 +27,7 @@ async def generate_catastrophe():
             limit -= 1
             cat = {}
         if limit == 0:
-            return make_response(jsonify({"status": False}), 501)
+            return make_response(jsonify({"status": False}), 502)
     return make_response(jsonify(cat), 201)
 
 
@@ -42,7 +42,7 @@ async def generate_bunker():
             limit -= 1
             bunker = {}
         if limit == 0:
-            return make_response(jsonify({"status": False}), 501)
+            return make_response(jsonify({"status": False}), 502)
     return make_response(jsonify(bunker), 201)
 
 
@@ -54,15 +54,15 @@ async def generate_player(game_code):
         try:
             user_data = await gen.generate_player(game_code)
             if list(user_data.keys()) != [
-                'gender', 'health', 'profession', 'hobby', 'luggage', 'fact1',
-                'fact2', 'age', 'action_card', 'phobia'
+                'gender', 'luggage', 'fact1', 'fact2', 'age',
+                'action_card', 'phobia', 'health', 'profession', 'hobby'
             ]:
                 user_data = {}
-        except (KeyError, json.decoder.JSONDecodeError, IndexError):
+        except (KeyError, json.decoder.JSONDecodeError, IndexError) as e:
             limit -= 1
             user_data = {}
         if limit == 0:
-            return make_response(jsonify({"status": False}), 501)
+            return make_response(jsonify({"status": False}), 502)
     gen.games[game_code].add_user_data(user_data)
     return make_response(jsonify(user_data), 201)
 
@@ -79,7 +79,7 @@ async def generate_bunker_result():
         except (KeyError, json.decoder.JSONDecodeError):
             result = {}
     if limit == 0:
-        return make_response(jsonify({"status": False}), 501)
+        return make_response(jsonify({"status": False}), 502)
     return make_response(jsonify(result), 201)
 
 
@@ -104,5 +104,5 @@ async def generate_result():
             limit -= 1
             result = {}
         if limit == 0:
-            return make_response(jsonify({"status": False}), 501)
+            return make_response(jsonify({"status": False}), 502)
     return make_response(jsonify(result), 201)
