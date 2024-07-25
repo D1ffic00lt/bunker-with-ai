@@ -15,7 +15,7 @@ class StartVoteButton(discord.ui.Button):
                     "http://api:9462/bunker/api/v1/get-game/{}".format(self.view.game_code),
                     timeout=60
                 )
-                if game.status_code // 100 in [4, 5]:
+                if game.status_code // 100 in [3, 4, 5]:
                     await inter.response.send_message("Что-то пошло не так...")
                     return
             except httpx.TimeoutException:
@@ -94,7 +94,7 @@ class VoteButton(discord.ui.Button):
                         "http://api:9462/bunker/api/v1/user/reset-vote/{}".format(self.view.game_code),
                         timeout=60
                     )
-                    if response.status_code // 100 in [4, 5]:
+                    if response.status_code // 100 in [3, 4, 5]:
                         await inter.response.send_message("Что-то пошло не так...")
                         return
                 except httpx.TimeoutException:

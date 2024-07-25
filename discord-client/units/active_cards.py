@@ -46,7 +46,7 @@ class ActiveCardButton(discord.ui.Button):
                             i.disabled = True
                             break
                     await self.view.original_message.edit(view=self.view.original_view)
-                    if response.status_code // 100 in [4, 5]:
+                    if response.status_code // 100 in [3, 4, 5]:
                         message = await inter.user.send("Что-то пошло не так...")
                         await message.delete(delay=5)
                         return

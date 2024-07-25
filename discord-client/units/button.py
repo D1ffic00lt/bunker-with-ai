@@ -134,7 +134,7 @@ class ControlButtons(discord.ui.View):
                     "http://api:9462/bunker/api/v1/get-game/{}".format(self.game_code),
                     timeout=60
                 )
-                if game.status_code // 100 in [4, 5]:
+                if game.status_code // 100 in [3, 4, 5]:
                     await inter.response.send_message("Что-то пошло не так...")
                     return
                 game = game.json()
@@ -176,7 +176,7 @@ class ControlButtons(discord.ui.View):
                     except discord.errors.NotFound:
                         pass
                     return
-                if response.status_code // 100 in [4, 5]:
+                if response.status_code // 100 in [3, 4, 5]:
                     await inter.response.send_message("Что-то пошло не так...")
                     message = await inter.original_response()
                     await message.delete(delay=5)
@@ -210,7 +210,7 @@ class ControlButtons(discord.ui.View):
                 response = await client.patch(
                     "http://api:9462/bunker/api/v1/leave-game/{}/{}".format(self.game_code, inter.user.id)
                 )
-                if response.status_code // 100 in [4, 5]:
+                if response.status_code // 100 in [3, 4, 5]:
                     await inter.response.send_message("Что-то пошло не так...")
                     return
             except httpx.TimeoutException:
