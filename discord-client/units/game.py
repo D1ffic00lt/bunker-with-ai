@@ -249,7 +249,7 @@ class Game(commands.Cog):
             surface_result = surface_result.json()
         try:
             bunker_result = f"Судьба людей в бункере: \n```\n{bunker_result['result']}\n```\n"
-            surface_result = f"Судьба людей вне бункере: \n```\n{surface_result['result']}\n```\n"
+            surface_result = f"Судьба людей вне бункера: \n```\n{surface_result['result']}\n```\n"
         except TypeError:
             await inter.response.send_message("что-то пошло не так...")
         for player in game["users"]:
