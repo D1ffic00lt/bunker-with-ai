@@ -146,16 +146,16 @@ class User(SqlAlchemyBase):
             "user_id": self.user_id,
             "room_id": self.room_id,
             "gender": self.gender,
-            "health": self.health,
+            "age": self.age,
             "profession": self.profession,
+            "health": self.health,
             "hobby": self.hobby,
             "luggage": self.luggage,
-            "action_card": self.action_card,
-            "age": self.age,
+            "phobia": self.phobia,
             "fact1": self.fact1,
             "fact2": self.fact2,
+            "action_card": self.action_card,
             "active": self.active,
-            "phobia": self.phobia,
             "gender_revealed": self.gender_revealed,
             "health_revealed": self.health_revealed,
             "profession_revealed": self.profession_revealed,
@@ -189,3 +189,16 @@ class User(SqlAlchemyBase):
         if attribute not in self.REVEL_ATTRIBUTES:
             return
         setattr(self, attribute, True)
+
+    def leave(self):
+        self.gender_revealed = True
+        self.health_revealed = True
+        self.profession_revealed = True
+        self.hobby_revealed = True
+        self.luggage_revealed = True
+        self.action_card_revealed = True
+        self.age_revealed = True
+        self.fact1_revealed = True
+        self.fact2_revealed = True
+        self.phobia_revealed = True
+        self.active = False

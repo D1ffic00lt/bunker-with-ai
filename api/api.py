@@ -132,9 +132,13 @@ async def leave_game(game_code, user_id):
             if room_id is None:
                 return make_response(jsonify({"status": False}), 404)
 
-            await session.execute(
-                update(User).values(active=False).where(and_(User.room_id == room_id.id, User.user_id == user_id))
+            users = await session.execute(
+                select(User).where(and_(User.room_id == room_id.id, User.user_id == user_id))
             )
+            users = users.scalars().all()
+            for i in users:
+                i.leave()
+            await session.commit()
     return make_response(jsonify({"status": True}), 201)
 
 
