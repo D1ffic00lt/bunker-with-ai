@@ -10,6 +10,7 @@ from asyncio import run
 from bot import BunkerBOT
 from config import PREFIX
 from units.game import Game
+from units.info import Info
 
 warnings.filterwarnings("ignore")
 nest_asyncio.apply()
@@ -29,6 +30,7 @@ async def main() -> None:
     # logging.info("version: {}".format(__version__))
 
     await BOT.add_cog(Game(BOT))
+    await BOT.add_cog(Info(BOT))
 
     with open(os.environ.get('TOKEN')) as token_file:
         token = token_file.read()
