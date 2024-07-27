@@ -5,17 +5,28 @@ from copy import deepcopy
 
 
 class Generator(object):
-    def __init__(self, *, template_path: str, font_path: str, flag_path: str, skull_path: str):
+    def __init__(
+            self, *,
+            template_path: str, font_path: str,
+            title_font_path: str,
+            flag_path: str, skull_path: str
+    ):
         self.template_path = template_path
         self.font_path = font_path
         self.flag_path = flag_path
         self.skull_path = skull_path
-        self.template_image = Image.open(template_path)
+        self.template_image = Image.open(template_path).resize((1920, 1080)).convert("RGBA")
         self.width, self.height = self.template_image.size
-        self.main_info_font = ImageFont.truetype(font_path, 100, encoding="unic")
-        self.info_font = ImageFont.truetype(font_path, 60, encoding="unic")
+        self.main_info_font = ImageFont.truetype(title_font_path, 100, encoding="unic")
+        self.info_font = ImageFont.truetype(font_path, 50, encoding="unic")
         self.flag = Image.open(flag_path).resize((90, 90)).convert("RGBA")
         self.skull = Image.open(skull_path).resize((150, 150)).convert("RGBA")
+
+    @staticmethod
+    def draw_text_with_shadow(draw, position, text, font, fill, shadow_offset=(2, 2), shadow_fill="black"):
+        shadow_position = (position[0] + shadow_offset[0], position[1] + shadow_offset[1])
+        draw.text(shadow_position, text, font=font, fill=shadow_fill)
+        draw.text(position, text, font=font, fill=fill)
 
     def generate(self, data):
         gender = data["gender"][0] if data["gender_revealed"] else "?"
@@ -36,79 +47,85 @@ class Generator(object):
 
         template_image = deepcopy(self.template_image)
         image = ImageDraw.Draw(template_image)
-        offset = self.height - 150
-        for line in textwrap.wrap(hobby[:70], width=30)[::-1]:
-            image.text(
-                (140, offset), line, font=self.info_font, fill="#f4d35f"
-            )
-            offset -= 60
-        offset -= 10
+        change_of_offset = 10
+        text_wrap_step = 50
+        offset = self.height - 120
 
-        for line in textwrap.wrap(phobia[:70], width=30)[::-1]:
-            image.text(
-                (140, offset), line, font=self.info_font, fill="#6ad1cd"
-            )
-            offset -= 60
-        offset -= 10
+        for line in textwrap.wrap(hobby[:70], width=25)[::-1]:
+            self.draw_text_with_shadow(image, (80, offset), line, self.info_font, "#f4d35f")
+            offset -= text_wrap_step
+        offset -= change_of_offset
 
-        for line in textwrap.wrap(health[:70], width=30)[::-1]:
-            image.text(
-                (140, offset), line, font=self.info_font, fill="#efa0e5"
-            )
-            offset -= 60
-        offset -= 10
+        for line in textwrap.wrap(phobia[:70], width=25)[::-1]:
+            self.draw_text_with_shadow(image, (80, offset), line, self.info_font, "#6ad1cd")
+            offset -= text_wrap_step
+        offset -= change_of_offset
 
-        for line in textwrap.wrap(profession[:70], width=30)[::-1]:
-            image.text(
-                (140, offset), line, font=self.info_font, fill="white"
-            )
-            offset -= 60
-        image.text((160, 210), gender, fill="#f6de8a", font=self.main_info_font)
-        image.text((340, 210), age, fill="#f6de8a", font=self.main_info_font)
+        for line in textwrap.wrap(health[:70], width=25)[::-1]:
+            self.draw_text_with_shadow(image, (80, offset), line, self.info_font, "#efa0e5")
+            offset -= text_wrap_step
+        offset -= change_of_offset
 
-        offset = self.height - 150
+        for line in textwrap.wrap(profession[:70], width=25)[::-1]:
+            self.draw_text_with_shadow(image, (80, offset), line, self.info_font, "white")
+            offset -= text_wrap_step
+
+        self.draw_text_with_shadow(image, (115, 230), gender, self.main_info_font, "#f6de8a")
+        self.draw_text_with_shadow(image, (320, 230), age, self.main_info_font, "#f6de8a")
+
+        offset = self.height - 120
         for line in textwrap.wrap(luggage[:70], width=25)[::-1]:
-            image.text(
-                (self.width - self.info_font.getlength(line) - 120, offset), line, font=self.info_font, fill="#f32b7b"
+            self.draw_text_with_shadow(
+                image, (self.width - self.info_font.getlength(line) - 80, offset),
+                line, self.info_font, "#f32b7b"
             )
-            offset -= 60
-        offset -= 10
+            offset -= text_wrap_step
+        offset -= change_of_offset
         for line in textwrap.wrap(fact2[:70], width=25)[::-1]:
-            image.text(
-                (self.width - self.info_font.getlength(line) - 120, offset), line, font=self.info_font, fill="#54e6a3"
+            self.draw_text_with_shadow(
+                image, (self.width - self.info_font.getlength(line) - 80, offset),
+                line, self.info_font, "#54e6a3"
             )
-            offset -= 60
-        offset -= 10
+            offset -= text_wrap_step
+        offset -= change_of_offset
         for line in textwrap.wrap(fact1[:70], width=25)[::-1]:
-            image.text(
-                (self.width - self.info_font.getlength(line) - 120, offset), line, font=self.info_font, fill="#5bec5f"
+            self.draw_text_with_shadow(
+                image, (self.width - self.info_font.getlength(line) - 80, offset),
+                line, self.info_font, "#5bec5f"
             )
-            offset -= 60
+            offset -= text_wrap_step
+
         step = 100
         for i in range(votes):
-            template_image.paste(self.flag, (380 + (i + 1) * step, 225), self.flag)
+            template_image.paste(self.flag, (380 + (i + 1) * step, 230), self.flag)
         if not active:
-            template_image.paste(self.skull, (template_image.size[0] - 150 - 100, 100), self.skull)
+            # template_image.paste(self.skull, (template_image.size[0] - 150 - 100, 100), self.skull)
+            self.draw_text_with_shadow(
+                image, (self.width - self.main_info_font.getlength("ИЗГНАН") - 80, 80),
+                "ИЗГНАН", self.main_info_font, "white"
+            )
+
         return template_image
 
 
 if __name__ == "__main__":
     test_data = {
-        "gender_revealed": False,       "gender": "",
-        "health_revealed": False,       "health": "",
-        "profession_revealed": False,   "profession": "",
-        "hobby_revealed": False,        "hobby": "",
-        "luggage_revealed": False,      "luggage": "",
-        "action_card_revealed": False,  "action_card": "",
-        "age_revealed": False,          "age": "",
-        "fact1_revealed": False,        "fact1": "",
-        "fact2_revealed": False,        "fact2": "",
-        "phobia_revealed": False,       "phobia": "",
-        "active": False,                "number_of_votes": 1
+        "gender_revealed": True,       "gender": "Женщина",
+        "health_revealed": True,       "health": "Аллергический ринит 5%",
+        "profession_revealed": True,   "profession": "Журналист-международник",
+        "hobby_revealed": True,        "hobby": "Запоминать номера самолётов, пролетающих над городом",
+        "luggage_revealed": True,      "luggage": "Книжка о выживании в экстремальных условиях",
+        "action_card_revealed": True,  "action_card": "",
+        "age_revealed": True,          "age": "76 стаж: 15 лет",
+        "fact1_revealed": True,        "fact1": "Умеет играть на гитаре",
+        "fact2_revealed": True,        "fact2": "Был награждён грамотой за помощь бездомным животным",
+        "phobia_revealed": True,       "phobia": "Моторофобия",
+        "active": False,               "number_of_votes": 3
     }
     gen = Generator(
-        template_path="./static/SQUADBUNKERWEBKA.png",
-        font_path="./static/Gilroy Extra Bold.otf",
+        template_path="static/frame.png",
+        font_path="./static/Montserrat-Bold.ttf",
+        title_font_path="./static/Gilroy Extra Bold.otf",
         flag_path="./static/red_flag.png",
         skull_path="./static/red_skull.png"
     )
