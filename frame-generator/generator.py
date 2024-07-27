@@ -18,7 +18,7 @@ class Generator(object):
         self.template_image = Image.open(template_path).resize((1920, 1080)).convert("RGBA")
         self.width, self.height = self.template_image.size
         self.main_info_font = ImageFont.truetype(title_font_path, 100, encoding="unic")
-        self.info_font = ImageFont.truetype(font_path, 50, encoding="unic")
+        self.info_font = ImageFont.truetype(font_path, 45, encoding="unic")
         self.flag = Image.open(flag_path).resize((90, 90)).convert("RGBA")
         self.skull = Image.open(skull_path).resize((150, 150)).convert("RGBA")
 
