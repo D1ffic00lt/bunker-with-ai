@@ -6,11 +6,13 @@ import re
 import httpx
 
 from flask import Flask, make_response, jsonify, request
-from sqlalchemy import select, delete, update, and_
+from sqlalchemy import select, delete, and_
+from datetime import datetime
 
 from database.db_session import create_session, global_init
 from database.rooms import Room
 from database.users import User
+from database.auth import Auth
 
 app = Flask(__name__)
 
@@ -474,6 +476,51 @@ async def get_game(game_code):
             # print(response)
             return make_response(jsonify(response), 200)
 
+
+@app.route("/bunker/api/v1/auth", methods=["POST", "GET"])
+async def auth_user():
+    if request.method == "GET":
+        async with create_session() as session:
+            async with session.begin():
+                users = await session.execute(select(Auth).where(
+                    and_(Auth.user_id.isnot(None), Auth.check_expiration())
+                ))
+                users = users.scalars().all()
+                return make_response(jsonify(list(map(lambda x: x.get_main_info(), users))), 200)
+
+    token_hash = request.args.get("token_hash", None, str)
+    user_id = request.args.get("user_id", None, int)
+    expiration_date = request.args.get("expiration_date", None, str)
+    if token_hash is None:
+        async with create_session() as session:
+            async with session.begin():
+                auth = Auth()
+                token = auth.generate_token()
+                auth.token_hash = auth.hash(token)
+                if expiration_date is not None:
+                    auth.expiration_date = expiration_date
+
+                session.add(auth)
+                await session.commit()
+                response = {
+                    "token": token
+                }
+                return make_response(jsonify(response), 201)
+
+    async with create_session() as session:
+        async with session.begin():
+            auth = await session.execute(
+                select(Auth).where(Auth.token_hash == token_hash)
+            )
+            auth = auth.scalars().first()
+            if auth is None:
+                response = {
+                    "auth": False,
+                    "message": "Token not found."
+                }
+                return make_response(jsonify(response), 404)
+            message, code = auth.auth(user_id)
+            return make_response(jsonify(message), code)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001)
