@@ -44,7 +44,7 @@ services:
       TOKEN: /run/secrets/main_gpt_token
       MODEL_URI: /run/secrets/main_gpt_uri
       API_KEY: /run/secrets/main_gpt_api_key
-      AUTH_TYPE: uri
+      AUTH_TYPE: api_key
     secrets:
       - main_gpt_token
       - main_gpt_uri

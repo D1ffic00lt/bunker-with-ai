@@ -82,6 +82,7 @@ class Generator(object):
                 json=data,
                 headers=self.__auth_headers, timeout=80
             )
+            # print(resp.text)
         if resp.status_code == 401:
             self.__auth_headers = await self.__get_auth()
             async with httpx.AsyncClient() as client:
@@ -143,7 +144,7 @@ class Generator(object):
                 headers=self.__auth_headers, timeout=None
             )
         # resp = requests.post(self.URL, json=data, headers=self.__auth_headers, timeout=None)
-        print(resp.text)
+        # print(resp.text)
         if resp.status_code == 401:
             self.__auth_headers = await self.__get_auth()
             async with httpx.AsyncClient() as client:
@@ -404,9 +405,9 @@ class Generator(object):
 
 
 if __name__ == "__main__":
-    with open("../secrets/gpt-reserve/token.txt") as file:
+    with open("../secrets/gpt-main/api_key.txt") as file:
         model_token = file.read().strip()
-    with open("../secrets/gpt-reserve/model_uri.txt") as file:
+    with open("../secrets/gpt-main/model_uri.txt") as file:
         uri = file.read().strip()
     gen = Generator(model_token)
     gen.TEMPLATE["modelUri"] = uri
