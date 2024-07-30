@@ -7,8 +7,12 @@ from flask import Flask, make_response, jsonify, request
 from generator import Generator
 
 app = Flask(__name__)
-with open(os.environ.get('TOKEN')) as token_file:
-    token = token_file.read()
+if os.environ.get('AUTH_TYPE') == "iam":
+    with open(os.environ.get('TOKEN')) as token_file:
+        token = token_file.read()
+else:
+    with open(os.environ.get('API_KEY')) as token_file:
+        token = token_file.read()
 with open(os.environ.get('MODEL_URI')) as model_uri_file:
     model_uri = model_uri_file.read()
 

@@ -26,7 +26,7 @@ not_found_frame_data = {
 
 @app.route('/api/v1/url', methods=['GET'])
 async def get_url():
-    return make_response(jsonify({"url": "http://127.0.0.1:5001/"}), 200)  # TODO
+    return make_response(jsonify({"url": "http://bunker.d1ffic00lt.com/"}), 200)  # TODO
 
 
 @app.route("/api/v1/bunker/<int:user_id>", methods=["GET"])

@@ -1,17 +1,20 @@
 # -*- coding: utf-8 -*-
 import asyncio
+import functools
+
 import discord
 import httpx
 
 from discord.ext import commands
 from discord import app_commands
+from typing import Any
 
 from .button import ControlButtons
 from .votes import StartVoteButton
 
 
 class Game(commands.Cog):
-    def __init__(self, bot: commands.Bot, *args, **kwargs) -> None:
+    def __init__(self, bot: commands.Bot | Any, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.bot = bot
         self.games = {}
@@ -37,9 +40,21 @@ class Game(commands.Cog):
             'phobia_revealed', 'number_of_votes', 'switches'
         ]
 
+    async def check_auth(self, user_id, user_name, command):
+        if user_id in self.bot.ADMINISTRATORS:
+            print(f"PRIORITY LOGIN: {command} BY {user_name}")
+            return True
+        # print(self.bot.authenticated_users)
+        for user in self.bot.authenticated_users:
+            if user.user_id == user_id and user.check_expiration():
+                print(f"LOGIN: {command} BY {user_name}")
+                return True
+        return False
+
     @app_commands.command(name="reset-votes", description="Обнуляет голосования")
     async def __reset_votes(self, inter: discord.Interaction, game_code: str):
-        if not self.check_role_exists(inter.user.id):
+        if not await self.check_auth(inter.user.id, inter.user.display_name, "reset-votes"):
+            await inter.response.send_message("Вы не авторизированы!", ephemeral=True)
             return
         async with httpx.AsyncClient() as client:
             try:
@@ -72,7 +87,8 @@ class Game(commands.Cog):
 
     @app_commands.command(name="new-game", description="Создать новую игру")
     async def __new_game(self, inter: discord.Interaction) -> None:
-        if not self.check_role_exists(inter.user.id):
+        if not await self.check_auth(inter.user.id, inter.user.display_name, "new-game"):
+            await inter.response.send_message("Вы не авторизированы!", ephemeral=True)
             return
         await inter.response.send_message("Создание...")
         async with httpx.AsyncClient() as client:
@@ -98,7 +114,7 @@ class Game(commands.Cog):
             }
             try:
                 url = await client.get(
-                    "http://info-streaming:5001/api/v1/url",
+                    "http://info-streaming:80/api/v1/url",
                     timeout=60
                 )
                 if url.status_code // 100 in [3, 4, 5]:
@@ -118,8 +134,6 @@ class Game(commands.Cog):
 
     @app_commands.command(name="join", description="Присоединиться к игре")
     async def __join_game(self, inter: discord.Interaction, game_code: str) -> None:
-        if not self.check_role_exists(inter.user.id):
-            return
         await inter.response.send_message("Вход в игру...")
         async with httpx.AsyncClient() as client:
             try:
@@ -142,7 +156,7 @@ class Game(commands.Cog):
                 return
             try:
                 url = await client.get(
-                    "http://info-streaming:5001/api/v1/url",
+                    "http://info-streaming:80/api/v1/url",
                     timeout=60
                 )
                 if url.status_code // 100 in [3, 4, 5]:
@@ -165,7 +179,8 @@ class Game(commands.Cog):
 
     @app_commands.command(name="start", description="Начать игру")
     async def __start_game(self, inter: discord.Interaction, game_code: str) -> None:
-        if not self.check_role_exists(inter.user.id):
+        if not await self.check_auth(inter.user.id, inter.user.display_name, "start"):
+            await inter.response.send_message("Вы не авторизированы!", ephemeral=True)
             return
         async with httpx.AsyncClient() as client:
             try:
@@ -243,7 +258,8 @@ class Game(commands.Cog):
 
     @app_commands.command(name="get-result", description="Получить итоги игры")
     async def __get_result(self, inter: discord.Interaction, game_code: str) -> None:
-        if not self.check_role_exists(inter.user.id):
+        if not await self.check_auth(inter.user.id, inter.user.display_name, "get-result"):
+            await inter.response.send_message("Вы не авторизированы!", ephemeral=True)
             return
         await inter.response.send_message("Отправляю результаты. Это может занять какое-то время.")
         async with httpx.AsyncClient() as client:
@@ -319,8 +335,6 @@ class Game(commands.Cog):
 
     @app_commands.command(name="leave", description="Покинуть игру")
     async def __leave(self, inter: discord.Interaction, game_code: str) -> None:
-        if not self.check_role_exists(inter.user.id):
-            return
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.patch(
@@ -346,23 +360,9 @@ class Game(commands.Cog):
             game = game.json()
         return game["host_id"]
 
-    def check_role_exists(self, user_id):
-        # if host:
-        #     return user_id == 248021970774392832
-        if user_id == 401555829620211723:
-            return True
-        if user_id == 727817634669789204:
-            return True
-        guild = self.bot.get_guild(902508714383261696)
-        member = guild.get_member(user_id)
-        for i in member.roles:
-            if i.id == 1238504301714997318:
-                return True
-        return False
-
     @commands.command()
     async def sync(self, ctx: commands.context.Context, type_: str = "local"):
-        if ctx.author.id == 401555829620211723:
+        if ctx.author.id in self.bot.ADMINISTRATORS:
             if type_ == "global":
                 fmt = await ctx.bot.tree.sync()
                 await ctx.reply(f"Synced {len(fmt)} (global)")

@@ -11,6 +11,7 @@ from bot import BunkerBOT
 from config import PREFIX
 from units.game import Game
 from units.info import Info
+from units.auth import UserAuth
 
 warnings.filterwarnings("ignore")
 nest_asyncio.apply()
@@ -31,6 +32,7 @@ async def main() -> None:
 
     await BOT.add_cog(Game(BOT))
     await BOT.add_cog(Info(BOT))
+    await BOT.add_cog(UserAuth(BOT))
 
     with open(os.environ.get('TOKEN')) as token_file:
         token = token_file.read()

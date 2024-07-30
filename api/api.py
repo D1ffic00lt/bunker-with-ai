@@ -7,7 +7,6 @@ import httpx
 
 from flask import Flask, make_response, jsonify, request
 from sqlalchemy import select, delete, and_
-from datetime import datetime
 
 from database.db_session import create_session, global_init
 from database.rooms import Room
@@ -42,7 +41,10 @@ async def new_game(user_id):
                 await session.execute(delete(User).where(User.room_id == i.id))
     async with httpx.AsyncClient() as client:
         try:
-            cat = await client.post("http://generator:4322/generator/api/v1/catastrophe", timeout=60)
+            cat = await client.post(
+                "http://generator:4322/generator/api/v1/catastrophe",
+                timeout=60, follow_redirects=True
+            )
             if cat.status_code // 100 in [5, 4]:
                 return make_response({"status": False})
             cat = cat.json()
@@ -483,9 +485,10 @@ async def auth_user():
         async with create_session() as session:
             async with session.begin():
                 users = await session.execute(select(Auth).where(
-                    and_(Auth.user_id.isnot(None), Auth.check_expiration())
+                    and_(Auth.user_id.isnot(None))
                 ))
                 users = users.scalars().all()
+                users = list(filter(lambda x: x.expiration(), users))
                 return make_response(jsonify(list(map(lambda x: x.get_main_info(), users))), 200)
 
     token_hash = request.args.get("token_hash", None, str)

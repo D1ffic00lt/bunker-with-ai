@@ -2,7 +2,7 @@ import hashlib
 import sqlalchemy
 
 from datetime import datetime, timedelta
-from sqlalchemy.ext.hybrid import hybrid_method
+from sqlalchemy.ext.hybrid import hybrid_property
 from uuid import uuid4
 
 from .db_session import SqlAlchemyBase
@@ -36,8 +36,7 @@ class Auth(SqlAlchemyBase):
         unique=True
     )
 
-    @hybrid_method
-    def check_expiration(self):
+    def expiration(self):
         return self.to_datetime(str(self.expiration_date)) > datetime.now()
 
     @staticmethod
@@ -60,7 +59,7 @@ class Auth(SqlAlchemyBase):
                     "message": "Token user_id is not equal to user id."
                 }, 400
 
-        if not self.check_expiration():
+        if not self.expiration():
             return {
                 "auth": False,
                 "message": "Token expired."

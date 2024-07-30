@@ -1,5 +1,6 @@
 Flask[async]~=3.0.3
 SQLAlchemy~=2.0.29
-httpx~=0.27.0
+httpx[cli]
+requests
 aiosqlite~=0.20.0
 numpy~=1.26.4
