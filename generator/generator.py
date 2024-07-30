@@ -109,7 +109,7 @@ class Generator(object):
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     "https://iam.api.cloud.yandex.net/iam/v1/tokens/",
-                    json={"yandexPassportOauthToken": self.__token}, timeout=10
+                    json={"yandexPassportOauthToken": self.__token.strip()}, timeout=10
                 )
                 return {
                     "Authorization": f"Bearer {str(response.json()['iamToken'])}",
@@ -117,7 +117,7 @@ class Generator(object):
                                   "AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
                 }
         return {
-            "Authorization": f"Api-Key {self.__token}",
+            "Authorization": f"Api-Key {self.__token.strip()}",
             "User-Agent": "Mozilla/5.0 (iPad; CPU OS 12_2 like Mac OS X) "
                           "AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
         }
