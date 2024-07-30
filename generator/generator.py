@@ -109,17 +109,13 @@ class Generator(object):
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     "https://iam.api.cloud.yandex.net/iam/v1/tokens/",
-                    json={"yandexPassportOauthToken": self.__token.strip()}, timeout=10
+                    json={"yandexPassportOauthToken": self.__token}, timeout=10
                 )
                 return {
-                    "Authorization": f"Bearer {str(response.json()['iamToken'])}",
-                    "User-Agent": "Mozilla/5.0 (iPad; CPU OS 12_2 like Mac OS X) "
-                                  "AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+                    "Authorization": f"Bearer {str(response.json()['iamToken'])}"
                 }
         return {
-            "Authorization": f"Api-Key {self.__token.strip()}",
-            "User-Agent": "Mozilla/5.0 (iPad; CPU OS 12_2 like Mac OS X) "
-                          "AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+            "Authorization": f"Api-Key {self.__token}"
         }
 
     async def generate_catastrophe(self):
@@ -141,7 +137,7 @@ class Generator(object):
             resp = await client.post(
                 self.URL,
                 json=data,
-                headers=self.__auth_headers, timeout=None
+                headers=self.__auth_headers, timeout=80
             )
         # resp = requests.post(self.URL, json=data, headers=self.__auth_headers, timeout=None)
         # print(resp.text)
@@ -411,6 +407,7 @@ if __name__ == "__main__":
         uri = file.read().strip()
     gen = Generator(model_token)
     gen.TEMPLATE["modelUri"] = uri
+    # print(asyncio.run(gen.generate_catastrophe()))
     # Заболеваний, которыми можно болеть долго, состоящих из максимум 2 слов,
     # Профессий, можешь использовать фантастические профессии, кроме космоса,
     # f"Хобби, можешь использовать абсурдные хобби, "
