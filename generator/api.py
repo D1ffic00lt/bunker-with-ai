@@ -1,5 +1,8 @@
 import json
 import os
+
+import asyncio
+
 import config
 
 from flask import Flask, make_response, jsonify, request
@@ -29,6 +32,7 @@ async def generate_catastrophe():
             cat = await gen.generate_catastrophe()
         except (KeyError, json.decoder.JSONDecodeError):
             limit -= 1
+            await asyncio.sleep(1)
             cat = {}
         if limit == 0:
             return make_response(jsonify({"status": False}), 502)
@@ -44,6 +48,7 @@ async def generate_bunker():
             bunker = await gen.generate_bunker()
         except (KeyError, json.decoder.JSONDecodeError):
             limit -= 1
+            await asyncio.sleep(1)
             bunker = {}
         if limit == 0:
             return make_response(jsonify({"status": False}), 502)
@@ -62,8 +67,11 @@ async def generate_player(game_code):
                 'action_card', 'phobia', 'health', 'profession', 'hobby'
             ]:
                 user_data = {}
+                limit -= 1
+                await asyncio.sleep(1)
         except (KeyError, json.decoder.JSONDecodeError, IndexError) as e:
             limit -= 1
+            await asyncio.sleep(1)
             user_data = {}
         if limit == 0:
             return make_response(jsonify({"status": False}), 502)
@@ -80,8 +88,12 @@ async def generate_bunker_result():
             result = await gen.generate_bunker_result(request.json)
             if list(result.keys()) != ["result"]:
                 result = {}
+                limit -= 1
+                await asyncio.sleep(1)
         except (KeyError, json.decoder.JSONDecodeError):
             result = {}
+            limit -= 1
+            await asyncio.sleep(1)
     if limit == 0:
         return make_response(jsonify({"status": False}), 502)
     return make_response(jsonify(result), 201)
@@ -104,9 +116,11 @@ async def generate_result():
             result = await gen.generate_result(request.json)
             if list(result.keys()) != ["result"]:
                 result = {}
+                limit -= 1
         except (KeyError, json.decoder.JSONDecodeError):
             limit -= 1
             result = {}
+            await asyncio.sleep(1)
         if limit == 0:
             return make_response(jsonify({"status": False}), 502)
     return make_response(jsonify(result), 201)

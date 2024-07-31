@@ -172,9 +172,11 @@ class Generator(object):
                     )
                     if len(professions) < 15:
                         limit -= 1
+                        await asyncio.sleep(1)
                         professions = []
                 except (KeyError, json.decoder.JSONDecodeError, IndexError):
                     limit -= 1
+                    await asyncio.sleep(1)
                     professions = []
                 if limit == 0:
                     raise KeyError()
@@ -189,9 +191,11 @@ class Generator(object):
                     )
                     if len(healths) < 15:
                         healths = []
+                        await asyncio.sleep(1)
                         limit -= 1
                 except (KeyError, json.decoder.JSONDecodeError, IndexError):
                     limit -= 1
+                    await asyncio.sleep(1)
                     healths = []
                 if limit == 0:
                     raise KeyError()
@@ -206,9 +210,11 @@ class Generator(object):
                     )
                     if len(hobbies) < 15:
                         hobbies = []
+                        await asyncio.sleep(1)
                         limit -= 1
                 except (KeyError, json.decoder.JSONDecodeError, IndexError):
                     limit -= 1
+                    await asyncio.sleep(1)
                     hobbies = []
                 if limit == 0:
                     raise KeyError()
