@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 import asyncio
-import functools
-
 import discord
 import httpx
 
@@ -60,14 +58,16 @@ class Game(commands.Cog):
             try:
                 game = await client.get("http://api:9462/bunker/api/v1/get-game/{}".format(game_code), timeout=60)
                 if game.status_code // 100 in [3, 4, 5]:
-                    await inter.response.send_message("Что-то пошло не так...")
+                    await inter.response.send_message(self.bot.get_text_with_error(game))
                     return
             except httpx.TimeoutException:
-                await inter.response.send_message("Что-то пошло не так...")
+                await inter.response.send_message(
+                    "Что-то пошло не так... \n\nОшибка: Превышено время ожидания запроса."
+                )
                 return
             game = game.json()
         if game["host_id"] != inter.user.id:
-            await inter.response.send_message("Что-то пошло не так...")
+            await inter.response.send_message("Что-то пошло не так... \n\nОшибка: host_id != inter.user.id")
             return  # TODO
         async with httpx.AsyncClient() as client:
             try:
@@ -76,10 +76,13 @@ class Game(commands.Cog):
                     timeout=60
                 )
                 if response.status_code // 100 in [3, 4, 5]:
-                    await inter.response.send_message("Что-то пошло не так...")
+                    await inter.response.send_message(self.bot.get_text_with_error(response))
                     return
             except httpx.TimeoutException:
-                await inter.response.send_message("Что-то пошло не так...")
+                await inter.response.send_message(
+                    "Что-то пошло не так... "
+                    "\n\nОшибка: Превышено время ожидания запроса."
+                )
                 return
         await inter.response.send_message("Голосование перезагружено")
         message = await inter.original_response()
@@ -97,10 +100,11 @@ class Game(commands.Cog):
                     f"http://api:9462/bunker/api/v1/new-game/{inter.user.id}", timeout=60
                 )
                 if response.status_code // 100 in [3, 4, 5]:
-                    await inter.edit_original_response(content="Что-то пошло не так...")
+                    await inter.edit_original_response(content=self.bot.get_text_with_error(response))
                     return
             except httpx.TimeoutException:
-                await inter.edit_original_response(content="Что-то пошло не так...")
+                await inter.edit_original_response(content="Что-то пошло не так... \n\n"
+                                                           "Ошибка: Превышено время ожидания запроса.")
                 return
             if response.status_code == 201:
                 response = response.json()
@@ -118,10 +122,11 @@ class Game(commands.Cog):
                     timeout=60
                 )
                 if url.status_code // 100 in [3, 4, 5]:
-                    await inter.edit_original_response(content="Что-то пошло не так...")
+                    await inter.edit_original_response(content=self.bot.get_text_with_error(url))
                     return
             except httpx.TimeoutException:
-                await inter.edit_original_response(content="Что-то пошло не так...")
+                await inter.edit_original_response(content="Что-то пошло не так...\n\n"
+                                                           "Ошибка: Превышено время ожидания запроса.")
                 return
             url = url.json()["url"]
 
@@ -141,18 +146,20 @@ class Game(commands.Cog):
                     f"http://api:9462/bunker/api/v1/add-user/{game_code}/{inter.user.id}", timeout=60
                 )
                 if result.status_code // 100 in [3, 4, 5]:
-                    await inter.edit_original_response(content="Что-то пошло не так...")
+                    await inter.edit_original_response(content=self.bot.get_text_with_error(result))
                     return
             except (httpx.TimeoutException, TypeError):
-                await inter.edit_original_response(content="Что-то пошло не так...")
+                await inter.edit_original_response(content="Что-то пошло не так... "
+                                                           "\n\nОшибка: Превышено время ожидания запроса.")
                 return
             try:
                 game = await client.get("http://api:9462/bunker/api/v1/get-game/{}".format(game_code), timeout=60)
                 if game.status_code // 100 in [3, 4, 5]:
-                    await inter.edit_original_response(content="Что-то пошло не так...")
+                    await inter.edit_original_response(content=self.bot.get_text_with_error(game))
                     return
             except httpx.TimeoutException:
-                await inter.edit_original_response(content="Что-то пошло не так...")
+                await inter.edit_original_response(content="Что-то пошло не так..."
+                                                           "\n\nОшибка: Превышено время ожидания запроса.")
                 return
             try:
                 url = await client.get(
@@ -160,10 +167,11 @@ class Game(commands.Cog):
                     timeout=60
                 )
                 if url.status_code // 100 in [3, 4, 5]:
-                    await inter.edit_original_response(content="Что-то пошло не так...")
+                    await inter.edit_original_response(content=self.bot.get_text_with_error(url))
                     return
             except httpx.TimeoutException:
-                await inter.edit_original_response(content="Что-то пошло не так...")
+                await inter.edit_original_response(content="Что-то пошло не так..."
+                                                           "\n\nОшибка: Превышено время ожидания запроса.")
                 return
             url = url.json()["url"]
             host = game.json()["host_id"]
@@ -186,22 +194,23 @@ class Game(commands.Cog):
             try:
                 game = await client.get("http://api:9462/bunker/api/v1/get-game/{}".format(game_code), timeout=60)
                 if game.status_code // 100 in [3, 4, 5]:
-                    await inter.response.send_message("Что-то пошло не так...")
+                    await inter.response.send_message(self.bot.get_text_with_error(game))
                     return
             except httpx.TimeoutException:
-                await inter.response.send_message("Что-то пошло не так...")
+                await inter.response.send_message("Что-то пошло не так...\n\nОшибка: Превышено время ожидания запроса.")
                 return
             game = game.json()
             if game["host_id"] != inter.user.id:
-                await inter.response.send_message("Что-то пошло не так...")
+                await inter.response.send_message("Что-то пошло не так...\n\n"
+                                                  "Ошибка: Данная команда предназначена только для хоста")
                 return  # TODO
             try:
                 start = await client.post("http://api:9462/bunker/api/v1/start-game/{}".format(game_code), timeout=60)
                 if start.status_code // 100 in [3, 4, 5]:
-                    await inter.response.send_message("Что-то пошло не так...")
+                    await inter.response.send_message(self.bot.get_text_with_error(start))
                     return
             except httpx.TimeoutException:
-                await inter.response.send_message("Что-то пошло не так...")
+                await inter.response.send_message("Что-то пошло не так...\n\nОшибка: Превышено время ожидания запроса.")
                 return
         game_description = discord.Embed(
             title="Сценарий",
@@ -268,10 +277,11 @@ class Game(commands.Cog):
                     "http://api:9462/bunker/api/v1/get-game/{}".format(game_code), timeout=60
                 )
                 if game.status_code // 100 in [3, 4, 5]:
-                    await inter.edit_original_response(content="Что-то пошло не так...")
+                    await inter.edit_original_response(content=self.bot.get_text_with_error(game))
                     return
             except httpx.TimeoutException:
-                await inter.edit_original_response(content="Что-то пошло не так...")
+                await inter.edit_original_response(content="Что-то пошло не так..."
+                                                           "\n\nОшибка: Превышено время ожидания запроса.")
                 return
             game = game.json()
             if game["host_id"] != inter.user.id:
@@ -281,20 +291,22 @@ class Game(commands.Cog):
                     "http://api:9462/bunker/api/v1/result/bunker", json=game, timeout=60
                 )
                 if bunker_result.status_code // 100 in [3, 4, 5]:
-                    await inter.edit_original_response(content="Что-то пошло не так...")
+                    await inter.edit_original_response(content=self.bot.get_text_with_error(bunker_result))
                     return
             except httpx.TimeoutException:
-                await inter.edit_original_response(content="Что-то пошло не так...")
+                await inter.edit_original_response(content="Что-то пошло не так...\n\n"
+                                                           "Ошибка: Превышено время ожидания запроса.")
                 return
             try:
                 surface_result = await client.post(
                     "http://api:9462/bunker/api/v1/result/surface", json=game, timeout=60
                 )
                 if surface_result.status_code // 100 in [3, 4, 5]:
-                    await inter.edit_original_response(content="Что-то пошло не так...")
+                    await inter.edit_original_response(content=self.bot.get_text_with_error(surface_result))
                     return
             except httpx.TimeoutException:
-                await inter.edit_original_response(content="Что-то пошло не так...")
+                await inter.edit_original_response(content="Что-то пошло не так...\n\n"
+                                                           "Ошибка: Превышено время ожидания запроса.")
                 return
             bunker_result = bunker_result.json()
             surface_result = surface_result.json()
@@ -341,10 +353,11 @@ class Game(commands.Cog):
                     "http://api:9462/bunker/api/v1/leave-game/{}/{}".format(game_code, inter.user.id)
                 )
                 if response.status_code // 100 in [3, 4, 5]:
-                    await inter.edit_original_response(content="Что-то пошло не так...")
+                    await inter.edit_original_response(content=self.bot.get_text_with_error(response))
                     return
             except httpx.TimeoutException:
-                await inter.response.send_message(content="Что-то пошло не так...")
+                await inter.response.send_message(content="Что-то пошло не так...\n\n"
+                                                          "Ошибка: Превышено время ожидания запроса.")
                 return
         await inter.response.send_message("Успешно!")
 
