@@ -6,10 +6,10 @@ from copy import deepcopy
 
 class Generator(object):
     def __init__(
-            self, *,
-            template_path: str, font_path: str,
-            title_font_path: str,
-            flag_path: str, skull_path: str
+        self, *,
+        template_path: str, font_path: str,
+        title_font_path: str,
+        flag_path: str, skull_path: str
     ):
         self.template_path = template_path
         self.font_path = font_path
@@ -30,7 +30,7 @@ class Generator(object):
 
     def generate(self, data):
         gender = data["gender"][0] if data["gender_revealed"] else "?"
-        age = data["age"].split()[0] if data["age_revealed"] else "?"
+        age = data["age"].split(", ")[0] if data["age_revealed"] else "?"
         profession = data["profession"].lower() if data["profession_revealed"] else "профессия"
         if data["profession_revealed"] and data["age_revealed"]:
             profession += data["age"].split("стаж:")[-1].lower()
