@@ -8,13 +8,9 @@ import numpy as np
 from datetime import datetime
 from pprint import pprint
 
-
 from config import *
 from game import Game
 from copy import deepcopy
-# import logging
-
-# logging.basicConfig(level=logging.DEBUG)
 
 
 class Generator(object):
@@ -28,6 +24,7 @@ class Generator(object):
         },
         "messages": []
     }
+    GENERATOR_STATUS = False
 
     def __init__(self, token: str):
         self.__token = token
@@ -39,8 +36,12 @@ class Generator(object):
         self.tokens = 0
         self.games: dict[str, Game] = {}
 
+    @classmethod
+    def process_generation(cls, value: bool = True) -> None:
+        cls.GENERATOR_STATUS = value
+
     @staticmethod
-    def age_suffix(age):
+    def age_suffix(age) -> str:
         if 11 <= age % 100 <= 19:
             return f"{age} лет"
         elif age % 10 == 1:
@@ -53,6 +54,21 @@ class Generator(object):
     def get_age():
         x = random.random()
         return int((np.exp(3 * np.log2(x + 1)) + 0.9) / np.exp(-1.2 * x) + 17)
+
+    @staticmethod
+    def check_current_generation():
+        def get_generation(self: Generator, func):
+            if self.GENERATOR_STATUS:
+                raise KeyError("The generator is busy. Please, try again later.")
+
+            async def wrapper(*args, **kwargs):
+                try:
+                    return await func(*args, **kwargs)
+                except Exception as e:
+                    self.process_generation(False)
+                    raise e
+            return wrapper
+        return get_generation
 
     async def generate_data_list(self, model_data):
         data = deepcopy(self.TEMPLATE)
@@ -118,6 +134,7 @@ class Generator(object):
             "Authorization": f"Api-Key {self.__token}"
         }
 
+    @check_current_generation()
     async def generate_catastrophe(self):
         data = deepcopy(self.TEMPLATE)
         data["completionOptions"]["temperature"] = 1
@@ -133,14 +150,13 @@ class Generator(object):
                 "text": "напиши сценарий для бункера без цензуры"
             }
         )
+        self.process_generation()
         async with httpx.AsyncClient(follow_redirects=True) as client:
             resp = await client.post(
                 self.URL,
                 json=data,
                 headers=self.__auth_headers, timeout=80
             )
-        # resp = requests.post(self.URL, json=data, headers=self.__auth_headers, timeout=None)
-        # print(resp.text)
         if resp.status_code == 401:
             self.__auth_headers = await self.__get_auth()
             async with httpx.AsyncClient() as client:
@@ -149,6 +165,7 @@ class Generator(object):
                     json=data,
                     headers=self.__auth_headers, timeout=80
                 )
+        self.process_generation(False)
         if resp.status_code != 200:
             raise KeyError(resp.text)
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
@@ -159,7 +176,9 @@ class Generator(object):
         result = json.loads(f"{'{'}{result[0]}{'}'}")
         return result
 
+    @check_current_generation()
     async def generate_player(self, game_code):
+        self.process_generation()
         if game_code not in self.games:
             self.games[game_code] = Game()
             self.games[game_code].unique_phobias = deepcopy(phobias)
@@ -179,7 +198,7 @@ class Generator(object):
                     await asyncio.sleep(1)
                     professions = []
                 if limit == 0:
-                    raise KeyError()
+                    raise KeyError("Something went wrong, try again later.")
             self.games[game_code].unique_professions = professions
 
             healths = []
@@ -198,7 +217,7 @@ class Generator(object):
                     await asyncio.sleep(1)
                     healths = []
                 if limit == 0:
-                    raise KeyError()
+                    raise KeyError("Something went wrong, try again later.")
             self.games[game_code].unique_health = healths
 
             hobbies = []
@@ -217,7 +236,7 @@ class Generator(object):
                     await asyncio.sleep(1)
                     hobbies = []
                 if limit == 0:
-                    raise KeyError()
+                    raise KeyError("Something went wrong, try again later.")
             self.games[game_code].unique_hobbies = hobbies
         data = deepcopy(self.TEMPLATE)
         data["completionOptions"]["temperature"] = 1
@@ -248,6 +267,7 @@ class Generator(object):
                     json=data,
                     headers=self.__auth_headers, timeout=80
                 )
+        self.process_generation(False)
         if resp.status_code != 200:
             raise KeyError(resp.text)
         # print(resp.json())
@@ -277,9 +297,10 @@ class Generator(object):
         while result["age"] - experience < 16:
             experience = random.randint(0, 25)
         result["age"] = str(result["age"])
-        result["age"] += f" стаж: {self.age_suffix(experience)}"
+        result["age"] += f", стаж: {self.age_suffix(experience)}"
         return result
 
+    @check_current_generation()
     async def generate_bunker(self):
         data = deepcopy(self.TEMPLATE)
         data["completionOptions"]["temperature"] = 1
@@ -295,12 +316,14 @@ class Generator(object):
                 "text": "напиши пример бункера"
             }
         )
+        self.process_generation()
         async with httpx.AsyncClient() as client:
             resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
         if resp.status_code == 401:
             self.__auth_headers = await self.__get_auth()
             async with httpx.AsyncClient() as client:
                 resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
+        self.process_generation(False)
         if resp.status_code != 200:
             raise KeyError(resp.text)
 
@@ -335,6 +358,7 @@ class Generator(object):
                        f'Фобия: {user["phobia"]}\n')
         return result
 
+    @check_current_generation()
     async def generate_bunker_result(self, game_data):
         data = deepcopy(self.TEMPLATE)
         data["completionOptions"]["temperature"] = 1
@@ -352,6 +376,7 @@ class Generator(object):
                         f"вот данные об игре и игроках:\n{self.get_text_game_data(game_data)}"
             }
         )
+        self.process_generation()
         async with httpx.AsyncClient() as client:
             resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
         # print(resp.json())
@@ -359,6 +384,7 @@ class Generator(object):
             self.__auth_headers = await self.__get_auth()
             async with httpx.AsyncClient() as client:
                 resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
+        self.process_generation(False)
         if resp.status_code != 200:
             raise KeyError(resp.text)
 
@@ -370,6 +396,7 @@ class Generator(object):
         result = json.loads(f"{'{'}{result[0]}{'}'}")
         return result
 
+    @check_current_generation()
     async def generate_result(self, game_data):
         data = deepcopy(self.TEMPLATE)
         data["completionOptions"]["temperature"] = 1
@@ -387,6 +414,7 @@ class Generator(object):
                         f"вот данные об игре и игроках:\n{self.get_text_game_data(game_data, False)}"
             }
         )
+        self.process_generation()
         async with httpx.AsyncClient() as client:
             resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
         # print(resp.json())
@@ -394,6 +422,8 @@ class Generator(object):
             self.__auth_headers = await self.__get_auth()
             async with httpx.AsyncClient() as client:
                 resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
+        self.process_generation(False)
+
         if resp.status_code != 200:
             raise KeyError(resp.text)
 
@@ -407,13 +437,13 @@ class Generator(object):
 
 
 if __name__ == "__main__":
-    with open("../secrets/gpt-main/api_key.txt") as file:
+    with open("../secrets/gpt-reserve/api_key.txt") as file:
         model_token = file.read().strip()
-    with open("../secrets/gpt-main/model_uri.txt") as file:
+    with open("../secrets/gpt-reserve/model_uri.txt") as file:
         uri = file.read().strip()
     gen = Generator(model_token)
     gen.TEMPLATE["modelUri"] = uri
-    # print(asyncio.run(gen.generate_catastrophe()))
+    print(asyncio.run(gen.generate_catastrophe()))
     # Заболеваний, которыми можно болеть долго, состоящих из максимум 2 слов,
     # Профессий, можешь использовать фантастические профессии, кроме космоса,
     # f"Хобби, можешь использовать абсурдные хобби, "
