@@ -1,3 +1,4 @@
+# TODO: change timeout from 60 to 120 in the generator
 import asyncio
 import json
 import os.path
@@ -46,14 +47,14 @@ async def new_game(user_id):
                 timeout=60, follow_redirects=True
             )
             if cat.status_code // 100 in [5, 4]:
-                return make_response({"status": False})
+                return make_response({"status": False})  # TODO: error response
             cat = cat.json()
             bunker = await client.post("http://generator:4322/generator/api/v1/bunker", timeout=60)
             if bunker.status_code // 100 in [5, 4]:
-                return make_response({"status": False})
+                return make_response({"status": False})  # TODO: error response
             bunker = bunker.json()
         except (httpx.TimeoutException, KeyError, json.decoder.JSONDecodeError):
-            return make_response(jsonify({"status": False}), 501)
+            return make_response(jsonify({"status": False}), 501)  # TODO: error response
     async with create_session() as session:
         async with session.begin():
             new_room = Room()
@@ -78,7 +79,7 @@ async def remove_room(game_code):
             )
             room_id = room_id.scalars().first()
             if room_id is None:
-                return
+                return  # FIXME: error response
             await session.execute(
                 delete(Room).where(Room.game_code == game_code)
             )
@@ -97,7 +98,7 @@ async def get_game_code_id(host_id):
             )
             room = room.scalars().first()
             if room is None:
-                return make_response(jsonify({"status": False}), 404)
+                return make_response(jsonify({"status": False, "error": "Комната не найдена."}), 404)
             return make_response(jsonify({"game_code": room.game_code}), 200)
 
 
@@ -110,14 +111,14 @@ async def reveal_characteristic(game_code, user_id):
             )
             room_id = room_id.scalars().first()
             if room_id is None:
-                return make_response(jsonify({"status": False}), 404)
+                return make_response(jsonify({"status": False, "error": "Комната не найдена."}), 404)
 
             user = await session.execute(
                 select(User).where(and_(User.room_id == room_id.id, User.user_id == user_id))
             )
             user = user.scalars().first()
             if user is None:
-                return make_response(jsonify({"status": False}), 404)
+                return make_response(jsonify({"status": False, "error": "Пользователь не найден."}), 404)
 
             user.update(request.json["attribute"] + "_revealed")
             # await session.execute(update(user))
@@ -134,7 +135,7 @@ async def leave_game(game_code, user_id):
             )
             room_id = room_id.scalars().first()
             if room_id is None:
-                return make_response(jsonify({"status": False}), 404)
+                return make_response(jsonify({"status": False, "error": "Комната не найдена."}), 404)
 
             users = await session.execute(
                 select(User).where(and_(User.room_id == room_id.id, User.user_id == user_id))
@@ -156,7 +157,7 @@ async def use_active_card(game_code, user_id):
             room = room.scalars().first()
             room_id = room.id
             if room_id is None:
-                return make_response(jsonify({"status": False}), 404)
+                return make_response(jsonify({"status": False, "error": "Комната не найдена."}), 404)
 
             user = await session.execute(select(User).where(
                 and_(User.room_id == room_id, User.user_id == user_id)
@@ -170,7 +171,7 @@ async def use_active_card(game_code, user_id):
             )
             active_card = active_card.json()
     except httpx.TimeoutException:
-        return make_response(jsonify({"status": False}), 404)
+        return make_response(jsonify({"status": False, "error": "Превышено время ожидания запроса."}), 404)
     if not request.json["switch"] and active_card["id"] in [2, 6]:
         return make_response(jsonify({"status": False}), 424)
     async with create_session() as session:
@@ -187,7 +188,7 @@ async def use_active_card(game_code, user_id):
                         player = i
                 users = list(filter(lambda x: x.user_id != user_id, users))
                 if not users or player is None:
-                    return make_response({"status": False}, 404)
+                    return make_response({"status": False, "error": "Игрок не найден."}, 404)
                 player_to_switch = random.choice(users)
                 attr = player_to_switch.get_attr(player_card_attr)
 
@@ -234,7 +235,7 @@ async def use_active_card(game_code, user_id):
                 users = list(filter(lambda x: x.user_id != user_id, users))
 
                 if not users or player is None or player_to_switch is None:
-                    return make_response({"status": False}, 404)
+                    return make_response({"status": False, "error": "Игрок не найден."}, 404)
                 attr = player_to_switch.get_attr(player_card_attr)
 
                 player_to_switch.set_attr(player_card_attr, player.get_attr(player_card_attr))
@@ -252,7 +253,7 @@ async def use_active_card(game_code, user_id):
                         break
                 users = list(filter(lambda x: x.user_id != user_id, users))
                 if not users or player_to_switch is None:
-                    return make_response({"status": False}, 404)
+                    return make_response({"status": False, "error": "Игрок не найден."}, 404)
                 
                 player_to_switch.set_attr("Здоровье", "Здоров 100%")
                 player_to_switch.switches += 1
@@ -270,7 +271,7 @@ async def start_game(game_code):
             )
             room = room.scalars().first()
             if room is None:
-                return make_response(jsonify({"status": False}), 404)
+                return make_response(jsonify({"status": False, "error": "Комната не найдена"}), 404)
             room.started = True
             await session.commit()
             return make_response(jsonify({"status": True}), 201)
@@ -286,9 +287,9 @@ async def add_user(game_code, user_id):
             )
             room_id = room_id.scalars().first()
             if room_id is None:
-                return make_response(jsonify({"status": False}), 404)
+                return make_response(jsonify({"status": False, "error": "Комната не найдена."}), 404)
             if room_id.started:
-                return make_response(jsonify({"status": False}), 400)
+                return make_response(jsonify({"status": False, "error": "Игра уже идёт."}), 400)
             room_id = room_id.id
     try:
         async with httpx.AsyncClient() as client:
@@ -296,10 +297,10 @@ async def add_user(game_code, user_id):
                 f"http://generator:4322/generator/api/v1/player/{game_code}", timeout=60
             )
             if user_data.status_code // 100 in [5, 4]:
-                return make_response({"status": False})
+                return make_response({"status": False})  # TODO: error response
             user_data = user_data.json()
     except (httpx.TimeoutException, KeyError, json.decoder.JSONDecodeError):
-        return make_response(jsonify({"status": False}), 501)
+        return make_response(jsonify({"status": False}), 501)  # TODO: error response
     async with create_session() as session:
         async with session.begin():
             user = User()
@@ -319,7 +320,7 @@ async def add_user(game_code, user_id):
             try:
                 json_data = user.to_json()
             except (KeyError, json.decoder.JSONDecodeError):
-                return make_response(jsonify({"status": False}), 501)
+                return make_response(jsonify({"status": False}), 501)  # TODO: error response
             json_data["status"] = True
             return make_response(jsonify(json_data), 201)
 # except (KeyError, json.decoder.JSONDecodeError):
@@ -337,9 +338,9 @@ async def bunker_result():
                 timeout=60
             )
         except httpx.TimeoutException:
-            return make_response(jsonify({"status": False}), 501)
+            return make_response(jsonify({"status": False, "error": "Превышено время ожидания запроса."}), 501)
         if result.status_code // 100 in [5, 4]:
-            return make_response({"status": False}, 501)
+            return make_response({"status": False}, 501)  # TODO: error response
         result = result.json()
     return make_response(jsonify(result), 201)
 
@@ -354,14 +355,14 @@ async def add_vote(game_code, user_id):
             )
             room_id = room_id.scalars().first()
             if room_id is None:
-                return make_response(jsonify({"status": False}), 404)
+                return make_response(jsonify({"status": False, "error": "Комната не найдена"}), 404)
 
             user = await session.execute(
                 select(User).where(and_(User.room_id == room_id.id, User.user_id == user_id))
             )
             user = user.scalars().first()
             if user is None:
-                return make_response(jsonify({"status": False}), 404)
+                return make_response(jsonify({"status": False, "error": "Игрок не найден"}), 404)
 
             user.number_of_votes += 1
             # await session.execute(
@@ -381,14 +382,14 @@ async def remove_vote(game_code, user_id):
             )
             room_id = room_id.scalars().first()
             if room_id is None:
-                return make_response(jsonify({"status": False}), 404)
+                return make_response(jsonify({"status": False, "error": "Комната не найдена"}), 404)
 
             user = await session.execute(
                 select(User).where(and_(User.room_id == room_id.id, User.user_id == user_id))
             )
             user = user.scalars().first()
             if user is None:
-                return make_response(jsonify({"status": False}), 404)
+                return make_response(jsonify({"status": False, "error": "Игрок не найден."}), 404)
 
             user.number_of_votes -= 1
             # await session.execute(
@@ -408,14 +409,14 @@ async def reset_vote(game_code):
             )
             room_id = room_id.scalars().first()
             if room_id is None:
-                return make_response(jsonify({"status": False}), 404)
+                return make_response(jsonify({"status": False, "error": "Комната не найдена."}), 404)
 
             users = await session.execute(
                 select(User).where(User.room_id == room_id.id)
             )
             users = users.scalars().all()
             if users is None:
-                return make_response(jsonify({"status": False}), 404)
+                return make_response(jsonify({"status": False, "error": "Игроки не найдены."}), 404)
 
             for user in users:
                 user.number_of_votes = 0
@@ -438,9 +439,9 @@ async def surface_result():
                 timeout=60
             )
         except httpx.TimeoutException:
-            return make_response(jsonify({"status": False}), 501)
+            return make_response(jsonify({"status": False, "error": "Превышено время ожидания запроса."}), 501)
         if result.status_code // 100 in [5, 4]:
-            return make_response({"status": False}, 501)
+            return make_response({"status": False}, 501)  # TODO: error response
         result = result.json()
     return make_response(jsonify(result), 201)
 
@@ -455,7 +456,7 @@ async def get_game(game_code):
             )
             room = room.scalars().first()
             if room is None:
-                return make_response(jsonify({"status": False}), 404)
+                return make_response(jsonify({"status": False, "error": "Комната не найдена."}), 404)
 
             response["id"] = room.id
             response["host_id"] = room.host_id
@@ -519,9 +520,10 @@ async def auth_user():
             if auth is None:
                 response = {
                     "auth": False,
-                    "message": "Token not found."
+                    "message": "Token not found.",
+                    "error": "Token not found."
                 }
-                return make_response(jsonify(response), 404)
+                return make_response(jsonify(response), 404)  # TODO: error response
             message, code = auth.auth(user_id)
             return make_response(jsonify(message), code)
 
