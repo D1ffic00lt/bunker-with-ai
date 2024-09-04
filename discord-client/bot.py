@@ -11,13 +11,21 @@ from config import PREFIX
 
 
 class BunkerBOT(commands.Bot):
-    ADMINISTRATORS = [401555829620211723]
+    ADMINISTRATORS = [401555829620211723, 608314233079201834]
 
     def __init__(self, command_prefix: str, *, intents: discord.Intents, **kwargs) -> None:
         super().__init__(command_prefix, intents=intents, **kwargs)
         self.remove_command('help')
 
         self.authenticated_users = []
+
+    @staticmethod
+    def get_text_with_error(response):
+        result = "Что-то пошло не так... "
+        if 'application/json' in response.headers.get('Content-Type', ''):
+            error = response.json().get("error", None)
+            result += '\n\nОшибка: ' + error if error is not None else ''
+        return result
 
     async def on_ready(self) -> None:
         await self.wait_until_ready()
