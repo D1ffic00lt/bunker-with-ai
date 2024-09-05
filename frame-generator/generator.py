@@ -116,7 +116,7 @@ if __name__ == "__main__":
         "hobby_revealed": True,        "hobby": "Запоминать номера самолётов, пролетающих над городом",
         "luggage_revealed": True,      "luggage": "Книжка о выживании в экстремальных условиях",
         "action_card_revealed": True,  "action_card": "",
-        "age_revealed": True,          "age": "76 стаж: 15 лет",
+        "age_revealed": True,          "age": "76, стаж: 15 лет",
         "fact1_revealed": True,        "fact1": "Умеет играть на гитаре",
         "fact2_revealed": True,        "fact2": "Был награждён грамотой за помощь бездомным животным",
         "phobia_revealed": True,       "phobia": "Моторофобия",
