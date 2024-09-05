@@ -1,5 +1,4 @@
-# TODO: change timeout from 60 to 120 in the generator
-import asyncio
+    import asyncio
 import json
 import os.path
 import random
@@ -44,17 +43,27 @@ async def new_game(user_id):
         try:
             cat = await client.post(
                 "http://generator:4322/generator/api/v1/catastrophe",
-                timeout=60, follow_redirects=True
+                timeout=120, follow_redirects=True
             )
             if cat.status_code // 100 in [5, 4]:
-                return make_response({"status": False})  # TODO: error response
+                if 'application/json' in cat.headers.get('Content-Type', ''):
+                    return make_response(jsonify(
+                        {"status": True, "error": cat.json().get("error", None)}
+                    ), cat.status_code)
+                return make_response({"status": False})
             cat = cat.json()
-            bunker = await client.post("http://generator:4322/generator/api/v1/bunker", timeout=60)
+            bunker = await client.post("http://generator:4322/generator/api/v1/bunker", timeout=120)
             if bunker.status_code // 100 in [5, 4]:
-                return make_response({"status": False})  # TODO: error response
+                if 'application/json' in bunker.headers.get('Content-Type', ''):
+                    return make_response(jsonify(
+                        {"status": True, "error": bunker.json().get("error", None)}
+                    ), bunker.status_code)
+                return make_response({"status": False})
             bunker = bunker.json()
-        except (httpx.TimeoutException, KeyError, json.decoder.JSONDecodeError):
-            return make_response(jsonify({"status": False}), 501)  # TODO: error response
+        except httpx.TimeoutException:
+            return make_response(jsonify({"status": False, "error": "Превышено время ожидания запроса."}), 501)
+        except (KeyError, json.decoder.JSONDecodeError):
+            return make_response(jsonify({"status": False}), 501)
     async with create_session() as session:
         async with session.begin():
             new_room = Room()
@@ -79,7 +88,7 @@ async def remove_room(game_code):
             )
             room_id = room_id.scalars().first()
             if room_id is None:
-                return  # FIXME: error response
+                return make_response(jsonify({"status": False, "error": "Комната не найдена."}), 404)
             await session.execute(
                 delete(Room).where(Room.game_code == game_code)
             )
@@ -147,7 +156,7 @@ async def leave_game(game_code, user_id):
     return make_response(jsonify({"status": True}), 201)
 
 
-@app.route('/bunker/api/v1/use-active-card/<game_code>/<int:user_id>', methods=['POST'])  # TODO
+@app.route('/bunker/api/v1/use-active-card/<game_code>/<int:user_id>', methods=['POST'])
 async def use_active_card(game_code, user_id):
     async with create_session() as session:
         async with session.begin():
@@ -294,13 +303,19 @@ async def add_user(game_code, user_id):
     try:
         async with httpx.AsyncClient() as client:
             user_data = await client.post(
-                f"http://generator:4322/generator/api/v1/player/{game_code}", timeout=60
+                f"http://generator:4322/generator/api/v1/player/{game_code}", timeout=120
             )
             if user_data.status_code // 100 in [5, 4]:
-                return make_response({"status": False})  # TODO: error response
+                if 'application/json' in user_data.headers.get('Content-Type', ''):
+                    return make_response(jsonify(
+                        {"status": True, "error": user_data.json().get("error", None)}
+                    ), user_data.status_code)
+                return make_response({"status": False})
             user_data = user_data.json()
-    except (httpx.TimeoutException, KeyError, json.decoder.JSONDecodeError):
-        return make_response(jsonify({"status": False}), 501)  # TODO: error response
+    except httpx.TimeoutException:
+        return make_response(jsonify({"status": False, "error": "Превышено время ожидания запроса."}), 501)
+    except (KeyError, json.decoder.JSONDecodeError):
+        return make_response(jsonify({"status": False}), 501)
     async with create_session() as session:
         async with session.begin():
             user = User()
@@ -320,7 +335,7 @@ async def add_user(game_code, user_id):
             try:
                 json_data = user.to_json()
             except (KeyError, json.decoder.JSONDecodeError):
-                return make_response(jsonify({"status": False}), 501)  # TODO: error response
+                return make_response(jsonify({"status": False}), 501)
             json_data["status"] = True
             return make_response(jsonify(json_data), 201)
 # except (KeyError, json.decoder.JSONDecodeError):
@@ -335,12 +350,16 @@ async def bunker_result():
             result = await client.post(
                 f"http://generator:4322/generator/api/v1/bunker-result",
                 json=request.json,
-                timeout=60
+                timeout=120
             )
         except httpx.TimeoutException:
             return make_response(jsonify({"status": False, "error": "Превышено время ожидания запроса."}), 501)
         if result.status_code // 100 in [5, 4]:
-            return make_response({"status": False}, 501)  # TODO: error response
+            if 'application/json' in result.headers.get('Content-Type', ''):
+                return make_response(jsonify(
+                    {"status": True, "error": result.json().get("error", None)}
+                ), result.status_code)
+            return make_response({"status": False}, 501)
         result = result.json()
     return make_response(jsonify(result), 201)
 
@@ -392,11 +411,7 @@ async def remove_vote(game_code, user_id):
                 return make_response(jsonify({"status": False, "error": "Игрок не найден."}), 404)
 
             user.number_of_votes -= 1
-            # await session.execute(
-            #     update(User).values(number_of_votes=user.number_of_votes - 1).where(
-            #         User.room_id == room_id.id and User.user_id == user_id
-            #     )
-            # )
+
             return make_response(jsonify({"status": True}), 201)
 
 
@@ -421,11 +436,6 @@ async def reset_vote(game_code):
             for user in users:
                 user.number_of_votes = 0
 
-            # await session.execute(
-            #     update(User).values(number_of_votes=0).where(
-            #         User.room_id == room_id.id
-            #     )
-            # )
             return make_response(jsonify({"status": True}), 201)
 
 
@@ -436,12 +446,16 @@ async def surface_result():
             result = await client.post(
                 f"http://generator:4322/generator/api/v1/result",
                 json=request.json,
-                timeout=60
+                timeout=120
             )
         except httpx.TimeoutException:
             return make_response(jsonify({"status": False, "error": "Превышено время ожидания запроса."}), 501)
         if result.status_code // 100 in [5, 4]:
-            return make_response({"status": False}, 501)  # TODO: error response
+            if 'application/json' in result.headers.get('Content-Type', ''):
+                return make_response(jsonify(
+                    {"status": True, "error": result.json().get("error", None)}
+                ), result.status_code)
+            return make_response({"status": False}, 501)
         result = result.json()
     return make_response(jsonify(result), 201)
 
@@ -523,7 +537,7 @@ async def auth_user():
                     "message": "Token not found.",
                     "error": "Token not found."
                 }
-                return make_response(jsonify(response), 404)  # TODO: error response
+                return make_response(jsonify(response), 404)
             message, code = auth.auth(user_id)
             return make_response(jsonify(message), code)
 
