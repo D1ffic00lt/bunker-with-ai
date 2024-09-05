@@ -57,18 +57,18 @@ class Generator(object):
 
     @staticmethod
     def check_current_generation():
-        def get_generation(self: Generator, func):
-            if self.GENERATOR_STATUS:
-                raise KeyError("The generator is busy. Please, try again later.")
-
-            async def wrapper(*args, **kwargs):
+        def generator(func):
+            async def wrapper(self, *args, **kwargs):
+                if self.GENERATOR_STATUS:
+                    raise KeyError("The generator is busy. Please, try again later.")
                 try:
-                    return await func(*args, **kwargs)
+                    self.process_generation()
+                    return await func(self, *args, **kwargs)
                 except Exception as e:
                     self.process_generation(False)
                     raise e
             return wrapper
-        return get_generation
+        return generator
 
     async def generate_data_list(self, model_data):
         data = deepcopy(self.TEMPLATE)
@@ -108,7 +108,8 @@ class Generator(object):
                     headers=self.__auth_headers, timeout=80
                 )
         if resp.status_code != 200:
-            raise KeyError(resp.text)
+            raise KeyError("Something went wrong, try again later."
+                           "It should be Yandex Cloud error (header getting error), but may not be.")
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
         result = resp.json()["result"]["alternatives"][-1]["message"]["text"]
         # print(result)
@@ -150,7 +151,6 @@ class Generator(object):
                 "text": "напиши сценарий для бункера без цензуры"
             }
         )
-        self.process_generation()
         async with httpx.AsyncClient(follow_redirects=True) as client:
             resp = await client.post(
                 self.URL,
@@ -167,7 +167,8 @@ class Generator(object):
                 )
         self.process_generation(False)
         if resp.status_code != 200:
-            raise KeyError(resp.text)
+            raise KeyError("Something went wrong, try again later."
+                           "It should be Yandex Cloud error (generation error), but may not be.")
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
         result = resp.json()["result"]["alternatives"][-1]["message"]["text"]
         result = result.replace("\n", "")
@@ -178,7 +179,7 @@ class Generator(object):
 
     @check_current_generation()
     async def generate_player(self, game_code):
-        self.process_generation()
+        await asyncio.sleep(100)
         if game_code not in self.games:
             self.games[game_code] = Game()
             self.games[game_code].unique_phobias = deepcopy(phobias)
@@ -198,7 +199,8 @@ class Generator(object):
                     await asyncio.sleep(1)
                     professions = []
                 if limit == 0:
-                    raise KeyError("Something went wrong, try again later.")
+                    raise KeyError("Something went wrong, try again later."
+                                   "It should be Yandex Cloud error (limit error), but may not be.")
             self.games[game_code].unique_professions = professions
 
             healths = []
@@ -217,7 +219,8 @@ class Generator(object):
                     await asyncio.sleep(1)
                     healths = []
                 if limit == 0:
-                    raise KeyError("Something went wrong, try again later.")
+                    raise KeyError("Something went wrong, try again later. "
+                                   "It should be Yandex Cloud error (limit error), but may not be.")
             self.games[game_code].unique_health = healths
 
             hobbies = []
@@ -236,7 +239,8 @@ class Generator(object):
                     await asyncio.sleep(1)
                     hobbies = []
                 if limit == 0:
-                    raise KeyError("Something went wrong, try again later.")
+                    raise KeyError("Something went wrong, try again later." 
+                                   "It should be Yandex Cloud error (limit error), but may not be.")
             self.games[game_code].unique_hobbies = hobbies
         data = deepcopy(self.TEMPLATE)
         data["completionOptions"]["temperature"] = 1
@@ -269,7 +273,8 @@ class Generator(object):
                 )
         self.process_generation(False)
         if resp.status_code != 200:
-            raise KeyError(resp.text)
+            raise KeyError("Something went wrong, try again later."
+                           "It should be Yandex Cloud error (generation error), but may not be.")
         # print(resp.json())
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
         result = resp.json()["result"]["alternatives"][-1]["message"]["text"]
@@ -316,7 +321,7 @@ class Generator(object):
                 "text": "напиши пример бункера"
             }
         )
-        self.process_generation()
+
         async with httpx.AsyncClient() as client:
             resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
         if resp.status_code == 401:
@@ -325,7 +330,8 @@ class Generator(object):
                 resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
         self.process_generation(False)
         if resp.status_code != 200:
-            raise KeyError(resp.text)
+            raise KeyError("Something went wrong, try again later."
+                           "It should be Yandex Cloud error (generation error), but may not be.")
 
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
         result = resp.json()["result"]["alternatives"][-1]["message"]["text"]
@@ -376,7 +382,6 @@ class Generator(object):
                         f"вот данные об игре и игроках:\n{self.get_text_game_data(game_data)}"
             }
         )
-        self.process_generation()
         async with httpx.AsyncClient() as client:
             resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
         # print(resp.json())
@@ -386,7 +391,8 @@ class Generator(object):
                 resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
         self.process_generation(False)
         if resp.status_code != 200:
-            raise KeyError(resp.text)
+            raise KeyError("Something went wrong, try again later."
+                           "It should be Yandex Cloud error (generation error), but may not be.")
 
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
         result = resp.json()["result"]["alternatives"][-1]["message"]["text"]
@@ -414,7 +420,7 @@ class Generator(object):
                         f"вот данные об игре и игроках:\n{self.get_text_game_data(game_data, False)}"
             }
         )
-        self.process_generation()
+
         async with httpx.AsyncClient() as client:
             resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
         # print(resp.json())
@@ -425,7 +431,8 @@ class Generator(object):
         self.process_generation(False)
 
         if resp.status_code != 200:
-            raise KeyError(resp.text)
+            raise KeyError("Something went wrong, try again later."
+                           "It should be Yandex Cloud error (generation error), but may not be.")
 
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
         result = resp.json()["result"]["alternatives"][-1]["message"]["text"]
