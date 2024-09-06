@@ -70,6 +70,14 @@ class Generator(object):
             return wrapper
         return generator
 
+    def __token_processing(self, response: httpx.Response) -> dict:
+        result = response.json()["result"]["alternatives"][-1]["message"]["text"]
+        result = result.replace("\n", "")
+        result = result.replace("\t", "")
+        result = self.reg.findall(result)
+        result = json.loads(f"{'{'}{result[0]}{'}'}")
+        return result
+
     async def generate_data_list(self, model_data):
         data = deepcopy(self.TEMPLATE)
         data["completionOptions"]["temperature"] = 1
@@ -170,11 +178,7 @@ class Generator(object):
             raise KeyError("Something went wrong, try again later."
                            "It should be Yandex Cloud error (generation error), but may not be.")
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
-        result = resp.json()["result"]["alternatives"][-1]["message"]["text"]
-        result = result.replace("\n", "")
-        result = result.replace("\t", "")
-        result = self.reg.findall(result)
-        result = json.loads(f"{'{'}{result[0]}{'}'}")
+        result = self.__token_processing(resp)
         return result
 
     @check_current_generation()
@@ -277,11 +281,7 @@ class Generator(object):
                            "It should be Yandex Cloud error (generation error), but may not be.")
         # print(resp.json())
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
-        result = resp.json()["result"]["alternatives"][-1]["message"]["text"]
-        result = result.replace("\n", "")
-        result = result.replace("\t", "")
-        result = self.reg.findall(result)
-        result = json.loads(f"{'{'}{result[0]}{'}'}")
+        result = self.__token_processing(resp)
 
         result["age"] = round(self.get_age())
         active_card = self.games[game_code].active_card
@@ -334,11 +334,7 @@ class Generator(object):
                            "It should be Yandex Cloud error (generation error), but may not be.")
 
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
-        result = resp.json()["result"]["alternatives"][-1]["message"]["text"]
-        result = result.replace("\n", "")
-        result = result.replace("\t", "")
-        result = self.reg.findall(result)
-        result = json.loads(f"{'{'}{result[0]}{'}'}")
+        result = self.__token_processing(resp)
         return result
 
     @staticmethod
@@ -395,11 +391,7 @@ class Generator(object):
                            "It should be Yandex Cloud error (generation error), but may not be.")
 
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
-        result = resp.json()["result"]["alternatives"][-1]["message"]["text"]
-        result = result.replace("\n", "")
-        result = result.replace("\t", "")
-        result = self.reg.findall(result)
-        result = json.loads(f"{'{'}{result[0]}{'}'}")
+        result = self.__token_processing(resp)
         return result
 
     @check_current_generation()
@@ -435,11 +427,7 @@ class Generator(object):
                            "It should be Yandex Cloud error (generation error), but may not be.")
 
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
-        result = resp.json()["result"]["alternatives"][-1]["message"]["text"]
-        result = result.replace("\n", "")
-        result = result.replace("\t", "")
-        result = self.reg.findall(result)
-        result = json.loads(f"{'{'}{result[0]}{'}'}")
+        result = self.__token_processing(resp)
         return result
 
 
