@@ -1,0 +1,46 @@
+name: Bug Report
+description: File a bug report.
+title: "[Bug]: "
+labels: []
+assignees:
+  - D1ffic00lt
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за заполнение баг-репорта! В ближайшее время мы займёмся вашим вопросом.
+  - type: dropdown
+    id: version
+    attributes:
+      label: Команда, в которой произошла проблема
+      description: Во время выполнения какой команды произошла проблема?
+      options:
+        - new-game
+        - join
+        - start
+        - reset-votes
+        - leave
+        - get-result
+        - info
+        - get-frame
+        - phobia
+        - help
+        - Другая команда
+      default: 0
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Что произошло?
+      description: Расскажите нам, что произошло. Как и при каких условиях возникает/возникла проблема?
+      placeholder: Расскажите, что произошло!
+      value: "A bug happened!"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Логи
+      description: Пожалуйста, скопируйте и вставьте все соответствующие логи. Они будут автоматически преобразованы в код. Вы можете получить их при запуске файла `logs.bat` или команды `docker-compose logs --no-color >& logs.txt`. Также вы можете использовать [pastebin.com](https://pastebin.com/)
+      render: shell
