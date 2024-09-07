@@ -1,4 +1,5 @@
 <h1 align="center">The Bunker with AI</h1>
+
 <p align="center"><strong>Bunker</strong> is a discussion game about surviving in the apocalypse. A global catastrophic is coming to Earth. You are lucky to be near the entrance to the bunker. You can try to survive the most dangerous scenario, but not everyone will enter there. You will need to make a choice. Who will enter and who will be outside? </p>
 
 ## About the bot
@@ -40,6 +41,8 @@ $$
 	- Changing the number of places in the bunker
 	- Opening objects near the bunker
 	- Limitation of player actions
+## Bug report 
+If you find a bug, then you can make a bug report [here](https://github.com/D1ffic00lt/bunker-with-ai/issues/new?assignees=D1ffic00lt&labels=bug&projects=&template=bug_report.yml&title=%5BBug%5D%3A+), after which you can track the status of the bug fix.
 ## Installation and deployment
 
 ### 1. Docker installation 
