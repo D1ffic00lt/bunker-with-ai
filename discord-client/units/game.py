@@ -243,8 +243,10 @@ class Game(commands.Cog):
             user_desc.set_author(name=user.display_name)
             user_desc.set_thumbnail(url=user.avatar.url)
             user_desc.set_footer(
-                text="В случае неисправностей вы можете попросить хоста прописать команду /start снова "
-                     "или обратиться к администратору (D1ffic00lt)",
+                text="В случае неисправностей вы можете попросить хоста прописать команду /start снова, "
+                     "в случае глобальной неисправности вы можете оставить баг-репорт "
+                     "[здесь](https://github.com/D1ffic00lt/bunker-with-ai/issues/"
+                     "new?assignees=D1ffic00lt&labels=bug&projects=&template=bug_report.yml&title=%5BBug%5D%3A+).",
                 icon_url="https://avatars.githubusercontent.com/u/69642892?v=4"
             )
             for h in sorted(player, key=lambda x: self.sorting_indexes.index(x)):
@@ -285,7 +287,9 @@ class Game(commands.Cog):
                 return
             game = game.json()
             if game["host_id"] != inter.user.id:
-                return  # TODO
+                await inter.edit_original_response(content="Что-то пошло не так..."
+                                                           "\n\nОшибка: Данную команду может использовать только хост игры.")
+                return
             try:
                 bunker_result = await client.post(
                     "http://api:9462/bunker/api/v1/result/bunker", json=game, timeout=60
