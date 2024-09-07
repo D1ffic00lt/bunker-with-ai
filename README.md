@@ -1,5 +1,10 @@
 <h1 align="center">The Bunker with AI</h1>
-
+<div align="center">
+	<img alt="GitHub repo size" src="https://img.shields.io/github/repo-size/D1ffic00lt/bunker-with-ai">
+	<img alt="GitHub code size" src="https://img.shields.io/github/languages/code-size/D1ffic00lt/bunker-with-ai">
+	<img alt="GitHub commits stats" src="https://img.shields.io/github/commit-activity/y/D1ffic00lt/bunker-with-ai">
+	<img alt="GitHub License" src="https://img.shields.io/github/license/D1ffic00lt/bunker-with-ai">
+</div>
 <p align="center"><strong>Bunker</strong> is a discussion game about surviving in the apocalypse. A global catastrophic is coming to Earth. You are lucky to be near the entrance to the bunker. You can try to survive the most dangerous scenario, but not everyone will enter there. You will need to make a choice. Who will enter and who will be outside? </p>
 
 ## About the bot
