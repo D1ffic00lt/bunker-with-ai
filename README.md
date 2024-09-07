@@ -2,7 +2,7 @@
 <p align="center"><strong>Bunker</strong> is a discussion game about surviving in the apocalypse. A global catastrophic is coming to Earth. You are lucky to be near the entrance to the bunker. You can try to survive the most dangerous scenario, but not everyone will enter there. You will need to make a choice. Who will enter and who will be outside? </p>
 
 ## About the bot
-The Bunker bot is a program for generation scenarios for a bunker game via AI. Every game has a global catastrophic scenario, a bunker description and a danger in the bunker that players will need to eliminate. 
+The Bunker Bot is a program for generating scenarios for playing bunker using AI. Every game has a global catastrophic scenario, a bunker description and a danger in the bunker that players will need to eliminate. 
 ### Player generation using AI
 Each player has generated attributes:
 - `Age` 
