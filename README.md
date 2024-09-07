@@ -8,12 +8,12 @@ Each player has generated attributes:
 - `Age` 
 	
 	For the balanced game, age generation is based on the exponential _function_.
+	The _function_ is designed to generate ages mainly up to 20 years old, but less often it can output values higher, up to about 90 years old.
 
 $$
 get\_age(x)= [\frac{e^{3log_2(x+1)}+ 0.9}{e^{-1.2x}}+17], 1\ge x\ge 0 , x \in \mathbb{R} 
 $$
-
-The _function_ is designed to generate ages mainly up to 20 years old, but less often it can output values higher, up to about 90 years old.
+	
 - `Gender`
 	
 	Gender generation does not need more flexible settings, so simple generation is implemented through the random library. There are _3_ genders in the game except for men and women. The rarest of them, a **vampire**, cannot have children’s, but they are immortal. **Androids** can solve a lot of problems in the bunker, but they also can’t have a children. Humanoid, aliens are a mysterious race, who knows if they are friends or enemies...
