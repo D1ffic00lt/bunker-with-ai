@@ -11,7 +11,7 @@ Each player has generated attributes:
 	The _function_ is designed to generate ages mainly up to 20 years old, but less often it can output values higher, up to about 90 years old.
 
 $$
-get\_age(x)= [\frac{e^{3log_2(x+1)}+ 0.9}{e^{-1.2x}}+17], 1\ge x\ge 0 , x \in \mathbb{R} 
+get\\_age(x)= [\frac{e^{3log_2(x+1)}+ 0.9}{e^{-1.2x}}+17], 1\ge x\ge 0 , x \in \mathbb{R} 
 $$
 	
 - `Gender`
