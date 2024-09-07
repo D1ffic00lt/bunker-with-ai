@@ -29,8 +29,7 @@ class Generator(object):
     def __init__(self, token: str):
         self.__token = token
         self.__auth_headers = asyncio.run(self.__get_auth())
-        # httpx_logger = logging.getLogger("httpx")
-        # httpx_logger.setLevel(logging.DEBUG)
+
         self.reg = re.compile("{(.*?)}")
         self.list_reg = re.compile(r"\[\s*['\"][^'\"]*['\"]\s*(?:,\s*['\"][^'\"]*['\"]\s*)*]")
         self.tokens = 0
