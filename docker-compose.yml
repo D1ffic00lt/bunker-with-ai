@@ -10,6 +10,7 @@ services:
       - api
       - info-streaming
     environment:
+      ADMINISTRATORS: 401555829620211723, 608314233079201834
       PYTHONUNBUFFERED: 1
       PYTHONDONTWRITEBYTECODE: 1
       TOKEN: /run/secrets/discord_token
