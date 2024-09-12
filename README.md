@@ -69,8 +69,8 @@ To install the bot, you can use an archive on the GitHub [realizes](https://gith
 ```bash
 git clone https://github.com/d1ffic00lt/bunker-with-ai/
 ```
-
-If you want to use program **locally**, you can change the ports in `docker-compose.yml`, `info-streaming`:
+> [!IMPORTANT]
+> If you want to use program **locally**, you can change the ports in `docker-compose.yml`, `info-streaming`:
 
 | Line | From                 | To                            |
 | ---- | -------------------- | ----------------------------- |
@@ -148,4 +148,5 @@ You can use `token.txt` instead of `api_key.txt`, just turn it on in the `docker
 ### 4. Running
 To launch the bot for the first time, you must launch Docker, log in to the console **in the bot directory** and send `docker-compose up`, then Docker will install all dependencies and start all services automatically.  
 
-If you want to update the bot to a new version, you must send the `docker-compose build` to the console, after which you can start it again. 
+> [!IMPORTANT]
+> If you want to update the bot to a new version, you must send the `docker-compose build` to the console, after which you can start it again. 
