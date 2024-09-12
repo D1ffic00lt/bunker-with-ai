@@ -130,7 +130,7 @@ async def reveal_characteristic(game_code, user_id):
                 return make_response(jsonify({"status": False, "error": "Пользователь не найден."}), 404)
 
             user.update(request.json["attribute"] + "_revealed")
-            # await session.execute(update(user))
+
             await session.commit()
     return make_response(jsonify({"status": True}), 201)
 
@@ -338,9 +338,6 @@ async def add_user(game_code, user_id):
                 return make_response(jsonify({"status": False}), 501)
             json_data["status"] = True
             return make_response(jsonify(json_data), 201)
-# except (KeyError, json.decoder.JSONDecodeError):
-#     # raise e
-#     return make_response(jsonify({"status": False}), 501)
 
 
 @app.route("/bunker/api/v1/result/bunker", methods=["POST"])
@@ -384,11 +381,7 @@ async def add_vote(game_code, user_id):
                 return make_response(jsonify({"status": False, "error": "Игрок не найден"}), 404)
 
             user.number_of_votes += 1
-            # await session.execute(
-            #     update(User).values(number_of_votes=user.number_of_votes + 1).where(
-            #         User.room_id == room_id.id and User.user_id == user_id
-            #     )
-            # )
+
             return make_response(jsonify({"status": True}), 201)
 
 
@@ -490,7 +483,7 @@ async def get_game(game_code):
                 response["users"].append(
                     i.to_json()
                 )
-            # print(response)
+
             return make_response(jsonify(response), 200)
 
 

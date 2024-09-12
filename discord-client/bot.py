@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import logging
 import random
 import httpx
@@ -11,7 +12,7 @@ from config import PREFIX
 
 
 class BunkerBOT(commands.Bot):
-    ADMINISTRATORS = [401555829620211723, 608314233079201834]
+    ADMINISTRATORS = list(map(int, os.environ.get("ADMINISTRATORS").split(", ")))
 
     def __init__(self, command_prefix: str, *, intents: discord.Intents, **kwargs) -> None:
         super().__init__(command_prefix, intents=intents, **kwargs)
