@@ -7,6 +7,7 @@ import numpy as np
 
 from datetime import datetime
 from pprint import pprint
+from functools import wraps
 
 from config import *
 from game import Game
@@ -27,8 +28,8 @@ class Generator(object):
     GENERATOR_STATUS = False
 
     def __init__(self, token: str):
-        self.__token = token
-        self.__auth_headers = asyncio.run(self.__get_auth())
+        self._token = token
+        self._auth_headers = asyncio.run(self._get_auth())
 
         self.reg = re.compile("{(.*?)}")
         self.list_reg = re.compile(r"\[\s*['\"][^'\"]*['\"]\s*(?:,\s*['\"][^'\"]*['\"]\s*)*]")
@@ -57,6 +58,7 @@ class Generator(object):
     @staticmethod
     def check_current_generation():
         def generator(func):
+            @wraps(func)
             async def wrapper(self, *args, **kwargs):
                 if self.GENERATOR_STATUS:
                     raise KeyError("The generator is busy. Please, try again later.")
@@ -69,7 +71,7 @@ class Generator(object):
             return wrapper
         return generator
 
-    def __token_processing(self, response: httpx.Response) -> dict:
+    def _token_processing(self, response: httpx.Response) -> dict:
         result = response.json()["result"]["alternatives"][-1]["message"]["text"]
         result = result.replace("\n", "")
         result = result.replace("\t", "")
@@ -103,16 +105,16 @@ class Generator(object):
             resp = await client.post(
                 self.URL,
                 json=data,
-                headers=self.__auth_headers, timeout=80
+                headers=self._auth_headers, timeout=80
             )
             # print(resp.text)
         if resp.status_code == 401:
-            self.__auth_headers = await self.__get_auth()
+            self._auth_headers = await self._get_auth()
             async with httpx.AsyncClient() as client:
                 resp = await client.post(
                     self.URL,
                     json=data,
-                    headers=self.__auth_headers, timeout=80
+                    headers=self._auth_headers, timeout=80
                 )
         if resp.status_code != 200:
             raise KeyError("Something went wrong, try again later."
@@ -128,18 +130,18 @@ class Generator(object):
         result = json.loads(result[0])
         return result
 
-    async def __get_auth(self):
-        if "y0_" in self.__token:
+    async def _get_auth(self):
+        if "y0_" in self._token:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     "https://iam.api.cloud.yandex.net/iam/v1/tokens/",
-                    json={"yandexPassportOauthToken": self.__token}, timeout=10
+                    json={"yandexPassportOauthToken": self._token}, timeout=10
                 )
                 return {
                     "Authorization": f"Bearer {str(response.json()['iamToken'])}"
                 }
         return {
-            "Authorization": f"Api-Key {self.__token}"
+            "Authorization": f"Api-Key {self._token}"
         }
 
     @check_current_generation()
@@ -162,22 +164,22 @@ class Generator(object):
             resp = await client.post(
                 self.URL,
                 json=data,
-                headers=self.__auth_headers, timeout=80
+                headers=self._auth_headers, timeout=80
             )
         if resp.status_code == 401:
-            self.__auth_headers = await self.__get_auth()
+            self._auth_headers = await self._get_auth()
             async with httpx.AsyncClient() as client:
                 resp = await client.post(
                     self.URL,
                     json=data,
-                    headers=self.__auth_headers, timeout=80
+                    headers=self._auth_headers, timeout=80
                 )
         self.process_generation(False)
         if resp.status_code != 200:
             raise KeyError("Something went wrong, try again later."
                            "It should be Yandex Cloud error (generation error), but may not be.")
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
-        result = self.__token_processing(resp)
+        result = self._token_processing(resp)
         return result
 
     @check_current_generation()
@@ -264,15 +266,15 @@ class Generator(object):
             resp = await client.post(
                 self.URL,
                 json=data,
-                headers=self.__auth_headers, timeout=80
+                headers=self._auth_headers, timeout=80
             )
         if resp.status_code == 401:
-            self.__auth_headers = await self.__get_auth()
+            self._auth_headers = await self._get_auth()
             async with httpx.AsyncClient() as client:
                 resp = await client.post(
                     self.URL,
                     json=data,
-                    headers=self.__auth_headers, timeout=80
+                    headers=self._auth_headers, timeout=80
                 )
         self.process_generation(False)
         if resp.status_code != 200:
@@ -280,7 +282,7 @@ class Generator(object):
                            "It should be Yandex Cloud error (generation error), but may not be.")
         # print(resp.json())
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
-        result = self.__token_processing(resp)
+        result = self._token_processing(resp)
 
         result["age"] = round(self.get_age())
         active_card = self.games[game_code].active_card
@@ -322,18 +324,18 @@ class Generator(object):
         )
 
         async with httpx.AsyncClient() as client:
-            resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
+            resp = await client.post(self.URL, json=data, headers=self._auth_headers, timeout=80)
         if resp.status_code == 401:
-            self.__auth_headers = await self.__get_auth()
+            self._auth_headers = await self._get_auth()
             async with httpx.AsyncClient() as client:
-                resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
+                resp = await client.post(self.URL, json=data, headers=self._auth_headers, timeout=80)
         self.process_generation(False)
         if resp.status_code != 200:
             raise KeyError("Something went wrong, try again later."
                            "It should be Yandex Cloud error (generation error), but may not be.")
 
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
-        result = self.__token_processing(resp)
+        result = self._token_processing(resp)
         return result
 
     @staticmethod
@@ -378,19 +380,19 @@ class Generator(object):
             }
         )
         async with httpx.AsyncClient() as client:
-            resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
+            resp = await client.post(self.URL, json=data, headers=self._auth_headers, timeout=80)
         # print(resp.json())
         if resp.status_code == 401:
-            self.__auth_headers = await self.__get_auth()
+            self._auth_headers = await self._get_auth()
             async with httpx.AsyncClient() as client:
-                resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
+                resp = await client.post(self.URL, json=data, headers=self._auth_headers, timeout=80)
         self.process_generation(False)
         if resp.status_code != 200:
             raise KeyError("Something went wrong, try again later."
                            "It should be Yandex Cloud error (generation error), but may not be.")
 
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
-        result = self.__token_processing(resp)
+        result = self._token_processing(resp)
         return result
 
     @check_current_generation()
@@ -413,12 +415,12 @@ class Generator(object):
         )
 
         async with httpx.AsyncClient() as client:
-            resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
+            resp = await client.post(self.URL, json=data, headers=self._auth_headers, timeout=80)
         # print(resp.json())
         if resp.status_code == 401:
-            self.__auth_headers = await self.__get_auth()
+            self._auth_headers = await self._get_auth()
             async with httpx.AsyncClient() as client:
-                resp = await client.post(self.URL, json=data, headers=self.__auth_headers, timeout=80)
+                resp = await client.post(self.URL, json=data, headers=self._auth_headers, timeout=80)
         self.process_generation(False)
 
         if resp.status_code != 200:
@@ -426,11 +428,11 @@ class Generator(object):
                            "It should be Yandex Cloud error (generation error), but may not be.")
 
         self.tokens += int(resp.json()["result"]["usage"]["totalTokens"])
-        result = self.__token_processing(resp)
+        result = self._token_processing(resp)
         return result
 
 
-if __name__ == "__main__":
+if __name__ == "_main_":
     with open("../secrets/gpt-reserve/api_key.txt") as file:
         model_token = file.read().strip()
     with open("../secrets/gpt-reserve/model_uri.txt") as file:
