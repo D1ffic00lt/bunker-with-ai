@@ -150,3 +150,29 @@ To launch the bot for the first time, you must launch Docker, log in to the cons
 
 > [!IMPORTANT]
 > If you want to update the bot to a new version, you must send the `docker-compose build` to the console, after which you can start it again. 
+
+### Proxy
+
+If you have problems accessing discord in your location, you can use a proxy, just specify the address in the [docker-compose.yml](docker-compose.yml) file this way:
+```yml
+  bot:
+    build: ./discord-client/
+    restart: always
+    volumes:
+      - ./discord-client/config.py:/bot/config.py
+    depends_on:
+      - dpi
+      - api
+      - info-streaming
+    environment:
+      ADMINISTRATORS: 401555829620211723, 608314233079201834
+      PYTHONUNBUFFERED: 1
+      PYTHONDONTWRITEBYTECODE: 1
+      TOKEN: /run/secrets/discord_token
+      PREFIX: "/"
+      PROXY: http://<your_proxy_address>:<your_proxy_port>
+    secrets:
+      - discord_token
+```
+> [!IMPORTANT]
+> Don't forget to rebuild your docker compose!
