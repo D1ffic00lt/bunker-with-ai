@@ -8,7 +8,6 @@ import logging
 from asyncio import run
 
 from bot import BunkerBOT
-from config import PREFIX
 from units.game import Game
 from units.info import Info
 from units.auth import UserAuth
@@ -18,26 +17,29 @@ nest_asyncio.apply()
 
 logging.info("Program started")
 
-
 async def main() -> None:
     intents = discord.Intents.all()
     intents.members = True
     intents.message_content = True
 
-    BOT: BunkerBOT = BunkerBOT(
-        command_prefix=PREFIX,
-        intents=intents, case_insensitive=True
+    if os.environ.get("PROXY"):
+        print(f"USING PROXY: {os.environ.get('PROXY')}")
+
+    bot: BunkerBOT = BunkerBOT(
+        command_prefix=os.environ.get("PREFIX", "/"),
+        intents=intents, case_insensitive=True,
+        proxy=os.environ.get("PROXY", None),
     )
     # logging.info("version: {}".format(__version__))
 
-    await BOT.add_cog(Game(BOT))
-    await BOT.add_cog(Info(BOT))
-    await BOT.add_cog(UserAuth(BOT))
+    await bot.add_cog(Game(bot))
+    await bot.add_cog(Info(bot))
+    await bot.add_cog(UserAuth(bot))
 
     with open(os.environ.get('TOKEN')) as token_file:
         token = token_file.read()
 
-    BOT.run(token)
+    bot.run(token)
 
 
 if __name__ == '__main__':

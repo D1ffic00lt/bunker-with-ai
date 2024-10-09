@@ -9,7 +9,6 @@ import discord
 from discord.ext import commands
 
 from units.auth import Auth
-from config import PREFIX
 
 
 class BunkerBOT(commands.Bot):
@@ -35,7 +34,7 @@ class BunkerBOT(commands.Bot):
         await self.wait_until_ready()
         await self.change_presence(
             status=discord.Status.online,
-            activity=discord.Game(f"{PREFIX}help")
+            activity=discord.Game(f"{os.environ.get('PREFIX', '/')}help")
         )
         async with httpx.AsyncClient() as requests:
             users = await requests.get("http://api:9462/bunker/api/v1/auth")
