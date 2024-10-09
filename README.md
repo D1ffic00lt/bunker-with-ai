@@ -161,7 +161,6 @@ If you have problems accessing discord in your location, you can use a proxy, ju
     volumes:
       - ./discord-client/config.py:/bot/config.py
     depends_on:
-      - dpi
       - api
       - info-streaming
     environment:

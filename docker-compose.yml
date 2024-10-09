@@ -7,7 +7,6 @@ services:
     volumes:
       - ./discord-client/config.py:/bot/config.py
     depends_on:
-      - dpi
       - api
       - info-streaming
     environment:
