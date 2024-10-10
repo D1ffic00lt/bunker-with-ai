@@ -71,7 +71,7 @@ git clone https://github.com/d1ffic00lt/bunker-with-ai/
 ```
 > [!IMPORTANT]
 > If you want to use program **locally**, you can change the ports in [.env](.env):
-```yml
+```env
 INFO_STREAMING_PORT=<your_port>
 ```
 ### 3. Requirements
@@ -143,6 +143,6 @@ http://your_proxy
 > Don't forget to rebuild your docker compose!
 
 If you don't want to use the proxy all the time, you can disable it in [.env](.env):
-```txt
+```env
 DISABLE_PROXY=true  
 ```
