@@ -70,30 +70,9 @@ To install the bot, you can use an archive on the GitHub [realizes](https://gith
 git clone https://github.com/d1ffic00lt/bunker-with-ai/
 ```
 > [!IMPORTANT]
-> If you want to use program **locally**, you can change the ports in `docker-compose.yml`, `info-streaming`:
-
-| Line | From                 | To                            |
-| ---- | -------------------- | ----------------------------- |
-| 84   | `FLASK_RUN_PORT: 80` | `FLASK_RUN_PORT: <your_port>` |
-| 88   | `- "80:80"`          | `- "<your_port>:<your_port>"` |
-
-As a example, you can use `<your_port>` as `3821`, for this, the container should look like that: 
+> If you want to use program **locally**, you can change the ports in [.env](.env):
 ```yml
-info-streaming:  
-  build: info-streaming/  
-  restart: always  
-  environment:  
-    PYTHONDONTWRITEBYTECODE: 1  
-    PYTHONUNBUFFERED: 1  
-    FLASK_RUN_PORT: 3821 <-- there is new port here
-    FLASK_RUN_HOST: 0.0.0.0  
-    FLASK_APP: app.py  
-  ports:
-    - "3821:3821" <-- there are new ports here
-  depends_on:  
-    - api  
-    - frame-generator  
-    - redis
+INFO_STREAMING_PORT=<your_port>
 ```
 ### 3. Requirements
 The Bunker bot uses tokens to log in to [Discord](http://discord.com/developers/applications) and [Yandex Cloud](http://console.yandex.cloud/). So, you must create a directory with tokens for the correct use of the bot and the model.
@@ -111,6 +90,7 @@ The Bunker bot uses tokens to log in to [Discord](http://discord.com/developers/
 ├── nginx
 ├── restart.bat
 └── secrets
+    ├── proxy.txt  # optional variable 
     ├── discord_token.txt
     ├── gpt-main
     │   ├── api_key.txt
@@ -121,6 +101,8 @@ The Bunker bot uses tokens to log in to [Discord](http://discord.com/developers/
         ├── model_uri.txt
         └── token.txt
 ```
+- `proxy.txt`
+	A link to your proxy server.
 - `discord_token.txt` 
 	A _token_ for your own discord bot, you can get it on the [Discord Developer Portal](https://discord.com/developers/applications). Don't forget to enable `applications.commands` in the scopes of the bot. 
 - `gpt-main`
@@ -153,25 +135,14 @@ To launch the bot for the first time, you must launch Docker, log in to the cons
 
 ### Proxy
 
-If you have problems accessing discord in your location, you can use a proxy, just specify the address in the [docker-compose.yml](docker-compose.yml) file this way:
-```yml
-  bot:
-    build: ./discord-client/
-    restart: always
-    volumes:
-      - ./discord-client/config.py:/bot/config.py
-    depends_on:
-      - api
-      - info-streaming
-    environment:
-      ADMINISTRATORS: 401555829620211723, 608314233079201834
-      PYTHONUNBUFFERED: 1
-      PYTHONDONTWRITEBYTECODE: 1
-      TOKEN: /run/secrets/discord_token
-      PREFIX: "/"
-      PROXY: http://<your_proxy_address>:<your_proxy_port>
-    secrets:
-      - discord_token
+If you have problems accessing discord in your location, you can use a proxy, just specify the address in the `./secrets/proxy.txt` file this way:
+```txt
+http://your_proxy
 ```
 > [!IMPORTANT]
 > Don't forget to rebuild your docker compose!
+
+If you don't want to use the proxy all the time, you can disable it in [.env](.env):
+```txt
+DISABLE_PROXY=true  
+```
