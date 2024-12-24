@@ -1,4 +1,5 @@
-Flask[async]~=3.0.3
 SQLAlchemy~=2.0.29
 httpx~=0.27.0
 aiosqlite~=0.20.0
+fastapi[standard]>=0.115.6
+uvicorn>=0.32.1
