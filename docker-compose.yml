@@ -27,9 +27,8 @@ services:
     environment:
       PYTHONDONTWRITEBYTECODE: 1
       PYTHONUNBUFFERED: 1
-      FLASK_RUN_PORT: 9462
-      FLASK_RUN_HOST: 0.0.0.0
-      FLASK_APP: api.py
+      FASTAPI_RUN_PORT: 9462
+      FASTAPI_RUN_HOST: 0.0.0.0
     depends_on:
       - generator
     volumes:
@@ -84,9 +83,8 @@ services:
     environment:
       PYTHONDONTWRITEBYTECODE: 1
       PYTHONUNBUFFERED: 1
-      FLASK_RUN_PORT: 80
-      FLASK_RUN_HOST: 0.0.0.0
-      FLASK_APP: app.py
+      FASTAPI_RUN_PORT: 80
+      FASTAPI_RUN_HOST: 0.0.0.0
     ports:
       - "${INFO_STREAMING_PORT}:80"
     depends_on:
