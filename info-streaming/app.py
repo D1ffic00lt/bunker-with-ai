@@ -1,14 +1,15 @@
 import base64
 import io
-import types
 import httpx
-import redis
 
 from copy import deepcopy
-from flask import Flask, make_response, render_template, jsonify
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.templating import Jinja2Templates
 
-app = Flask(__name__)
-redis_db = redis.Redis(host='redis', port=1239, db=0, decode_responses=True)
+app = FastAPI()
+templates = Jinja2Templates(directory="./templates")
+not_found_frame = None
 not_found_frame_data = {
     "gender_revealed": False,
     "age_revealed": False,
@@ -24,98 +25,106 @@ not_found_frame_data = {
 }
 
 
-@app.route('/api/v1/url', methods=['GET'])
+async def get_not_found_frame():
+    async with httpx.AsyncClient() as requests:
+        try:
+            raw_not_found_frame = await requests.post(
+                "http://frame-generator:1334/api/v1/get-user-frame", json=not_found_frame_data
+            )
+        except httpx.TimeoutException:
+            return b""
+        if raw_not_found_frame.status_code // 100 in [4, 5]:
+            return b""
+
+        raw_not_found_frame = raw_not_found_frame.content
+        raw_not_found_frame = base64.b64encode(io.BytesIO(raw_not_found_frame).getvalue()).decode('utf-8')
+
+        return raw_not_found_frame
+
+
+@app.on_event("startup")
+async def setup_resources():
+    global not_found_frame
+    not_found_frame = await get_not_found_frame()
+
+
+@app.get('/api/v1/url')
 async def get_url():
-    return make_response(jsonify({"url": "http://bunker.d1ffic00lt.com/"}), 200)  # TODO
+    return JSONResponse({"url": "http://bunker.d1ffic00lt.com/"})
 
 
-@app.route("/api/v1/bunker/<int:user_id>", methods=["GET"])
-async def get_bunker(user_id):
+@app.get("/api/v1/bunker/{user_id}", response_class=HTMLResponse)
+async def get_bunker(user_id: int, request: Request):
     async with httpx.AsyncClient() as requests:
         game_code = await requests.get(f"http://api:9462/bunker/api/v1/game-code/{user_id}")
         if game_code.status_code // 100 in [4, 5]:
-            return make_response(jsonify({"status": False}), game_code.status_code)
+            raise HTTPException(status_code=game_code.status_code, detail="Error fetching game code")
 
         game_code = game_code.json()["game_code"]
         game = await requests.get("http://api:9462/bunker/api/v1/get-game/{}".format(game_code))
         if game.status_code // 100 in [4, 5]:
-            return make_response(jsonify({"status": False}), game.status_code)
+            raise HTTPException(status_code=game.status_code, detail="Error fetching game data")
 
         game = game.json()
-        if not game["started"]:
-            return make_response(render_template("index.html", content="Бункер"), 200)
-    return make_response(render_template("index.html", content=game["bunker"]), 200)
+        content = "Бункер" if not game["started"] else game["bunker"]
+        return templates.TemplateResponse(
+            name="index.html", context={"content": content, "request": request}
+        )
 
 
-@app.route("/api/v1/catastrophe/<int:user_id>", methods=["GET"])
-async def get_catastrophe(user_id):
+@app.get("/api/v1/catastrophe/{user_id}", response_class=HTMLResponse)
+async def get_catastrophe(user_id: int, request: Request):
     async with httpx.AsyncClient() as requests:
         game_code = await requests.get(f"http://api:9462/bunker/api/v1/game-code/{user_id}")
         if game_code.status_code // 100 in [4, 5]:
-            return make_response(jsonify({"status": False}), game_code.status_code)
+            raise HTTPException(status_code=game_code.status_code, detail="Error fetching game code")
 
         game_code = game_code.json()["game_code"]
         game = await requests.get("http://api:9462/bunker/api/v1/get-game/{}".format(game_code), timeout=60)
         if game.status_code // 100 in [4, 5]:
-            return make_response(jsonify({"status": False}), game.status_code)
+            raise HTTPException(status_code=game.status_code, detail="Error fetching game data")
 
         game = game.json()
-        if not game["started"]:
-            return make_response(render_template("index.html", content="Катастрофа"), 200)
-    return make_response(render_template("index.html", content=game["catastrophe"]), 200)
+        content = "Катастрофа" if not game["started"] else game["catastrophe"]
+        return templates.TemplateResponse(
+            name="index.html", context={"content": content, "request": request}
+        )
 
 
-@app.route("/api/v1/threat-in-bunker/<int:user_id>", methods=["GET"])
-async def get_threat(user_id):
+@app.get("/api/v1/threat-in-bunker/{user_id}", response_class=HTMLResponse)
+async def get_threat(user_id: int, request: Request):
     async with httpx.AsyncClient() as requests:
         game_code = await requests.get(f"http://api:9462/bunker/api/v1/game-code/{user_id}")
         if game_code.status_code // 100 in [4, 5]:
-            return make_response(jsonify({"status": False}), game_code.status_code)
+            raise HTTPException(status_code=game_code.status_code, detail="Error fetching game code")
 
         game_code = game_code.json()["game_code"]
         game = await requests.get("http://api:9462/bunker/api/v1/get-game/{}".format(game_code), timeout=60)
         if game.status_code // 100 in [4, 5]:
-            return make_response(jsonify({"status": False}), game.status_code)
+            raise HTTPException(status_code=game.status_code, detail="Error fetching game data")
 
         game = game.json()
-        if not game["started"]:
-            return make_response(render_template("index.html", content="Угроза в бункере"), 200)
-    return make_response(render_template("index.html", content=game["threat"]), 200)
+        content = "Угроза в бункере" if not game["started"] else game["threat"]
+        return templates.TemplateResponse(
+            name="index.html", context={"content": content, "request": request}
+        )
 
 
-@app.route("/api/v1/user-frame/<int:host_id>/<int:user_id>", methods=["GET"])
-async def get_user_frame(host_id, user_id):
+@app.get("/api/v1/user-frame/{host_id}/{user_id}", response_class=HTMLResponse)
+async def get_user_frame(host_id: int, user_id: int, request: Request):
     async with httpx.AsyncClient() as requests:
-        async def get_not_found_frame():
-            if redis_db.exists(f"frame_not_found"):
-                not_found_frame = redis_db.get(f"frame_not_found")
-                return not_found_frame
-            try:
-                not_found_frame = await requests.post(
-                    "http://frame-generator:1334/api/v1/get-user-frame", json=not_found_frame_data
-                )
-            except httpx.TimeoutException:
-                return b""
-            if not_found_frame.status_code // 100 in [4, 5]:
-                return b""
-
-            not_found_frame = not_found_frame.content
-            not_found_frame = base64.b64encode(io.BytesIO(not_found_frame).getvalue()).decode('utf-8')
-            awaitable_frame = redis_db.set(f"frame_not_found", not_found_frame)
-
-            if isinstance(awaitable_frame, types.CoroutineType):
-                print("some problem...")
-
-            return not_found_frame
-
         game_code = await requests.get(f"http://api:9462/bunker/api/v1/game-code/{host_id}")
         if game_code.status_code // 100 in [4, 5]:
-            return render_template("frame.html", image_base64=(await get_not_found_frame()))
+            return templates.TemplateResponse(
+                name="frame.html", context={"image_base64": not_found_frame, "request": request}
+            )
 
         game_code = game_code.json()["game_code"]
         game = await requests.get("http://api:9462/bunker/api/v1/get-game/{}".format(game_code), timeout=60)
         if game.status_code // 100 in [4, 5]:
-            return render_template("frame.html", image_base64=(await get_not_found_frame()))
+            return templates.TemplateResponse(
+                name="frame.html", context={"image_base64": not_found_frame, "request": request}
+            )
 
         game = game.json()
 
@@ -126,33 +135,17 @@ async def get_user_frame(host_id, user_id):
                 break
 
         if user_data == {}:
-            return render_template("frame.html", image_base64=(await get_not_found_frame()))
-        user_code = (f"{user_data['gender_revealed']}{user_data['health_revealed']}{user_data['profession_revealed']}"
-                     f"{user_data['hobby_revealed']}{user_data['luggage_revealed']}{user_data['age_revealed']}"
-                     f"{user_data['fact1_revealed']}{user_data['fact2_revealed']}{user_data['phobia_revealed']}"
-                     f"{user_data['number_of_votes']}{user_data['switches']}")
-
-        if redis_db.get(f"{host_id}:{user_id}") == user_code and redis_db.exists(f"frame_{host_id}:{user_id}"):
-            frame = redis_db.get(f"frame_{host_id}:{user_id}")
-            return render_template("frame.html", image_base64=frame)
-        awaitable = redis_db.set(f"{host_id}:{user_id}", user_code)
-
-        if isinstance(awaitable, types.CoroutineType):
-            print("some problem...")
-
+            return templates.TemplateResponse(
+                name="frame.html", context={"image_base64": not_found_frame, "request": request}
+            )
         frame = await requests.post("http://frame-generator:1334/api/v1/get-user-frame", json=user_data)
         if frame.status_code // 100 in [4, 5]:
-            return render_template("frame.html", image_base64=await get_not_found_frame())
+            return templates.TemplateResponse(
+                name="frame.html", context={"image_base64": not_found_frame, "request": request}
+            )
 
         frame = frame.content
         frame = base64.b64encode(io.BytesIO(frame).getvalue()).decode('utf-8')
-        awaitable = redis_db.set(f"frame_{host_id}:{user_id}", frame)
-
-        if isinstance(awaitable, types.CoroutineType):
-            print("some problem...")
-
-        return render_template("frame.html", image_base64=frame)
-
-
-if __name__ == "__main__":
-    app.run(debug=False, port=5001)
+        return templates.TemplateResponse(
+            name="frame.html", context={"image_base64": frame, "request": request}
+        )
