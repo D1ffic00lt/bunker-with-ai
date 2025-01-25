@@ -1,0 +1,142 @@
+version: '3.9'
+
+services:
+  bot:
+    build: ./discord-client/
+    restart: always
+    volumes:
+      - ./discord-client/config.py:/bot/config.py
+    depends_on:
+      - api
+      - info-streaming
+    environment:
+      ADMINISTRATORS: 401555829620211723, 608314233079201834
+      PYTHONUNBUFFERED: 1
+      PYTHONDONTWRITEBYTECODE: 1
+      TOKEN: /run/secrets/discord_token
+      PROXY: /run/secrets/proxy
+      DISABLE_PROXY: ${DISABLE_PROXY}
+      PREFIX: ${PREFIX}
+    secrets:
+      - discord_token
+      - proxy
+  api:
+    build:
+      context: ./api/
+    restart: always
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+      FASTAPI_RUN_PORT: 9462
+      FASTAPI_RUN_HOST: 0.0.0.0
+    depends_on:
+      - generator
+    volumes:
+      - ./api/.database:/api/.database/
+    ports:
+      - "9462:9462"
+  main-generator:
+    build:
+      context: ./generator/
+    restart: always
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+      FLASK_RUN_PORT: 4321
+      FLASK_RUN_HOST: 0.0.0.0
+      FLASK_APP: api.py
+      TOKEN: /run/secrets/main_gpt_token
+      MODEL_URI: /run/secrets/main_gpt_uri
+      API_KEY: /run/secrets/main_gpt_api_key
+      AUTH_TYPE: ${AUTH_TYPE}
+    secrets:
+      - main_gpt_token
+      - main_gpt_uri
+      - main_gpt_api_key
+  reserve-generator:
+    build:
+      context: ./generator/
+    restart: always
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+      FLASK_RUN_PORT: 4321
+      FLASK_RUN_HOST: 0.0.0.0
+      FLASK_APP: api.py
+      TOKEN: /run/secrets/reserve_gpt_token
+      MODEL_URI: /run/secrets/reserve_gpt_uri
+      API_KEY: /run/secrets/reserve_gpt_api_key
+      AUTH_TYPE: ${AUTH_TYPE}
+    secrets:
+      - reserve_gpt_token
+      - reserve_gpt_uri
+      - reserve_gpt_api_key
+  generator:
+    build:
+      context: .
+      dockerfile: ./nginx/Dockerfile
+    depends_on:
+      - main-generator
+      - reserve-generator
+    restart: always
+  info-streaming:
+    build: info-streaming/
+    restart: always
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+      FASTAPI_RUN_PORT: 80
+      FASTAPI_RUN_HOST: 0.0.0.0
+    ports:
+      - "${INFO_STREAMING_PORT}:80"
+    depends_on:
+      - api
+      - frame-generator
+      - redis
+  frame-generator:
+    build: ./frame-generator/
+    restart: always
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+      FLASK_RUN_PORT: 1334
+      FLASK_RUN_HOST: 0.0.0.0
+      FLASK_APP: app.py
+    depends_on:
+      - api
+    ports:
+      - "1334:1334"
+  redis:
+    image: redis:latest
+    restart: always
+    environment:
+      - REDIS_PORT=1239
+      - REDIS_DATABASES=16
+      - ALLOW_EMPTY_PASSWORD=yes
+      - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL,CONFIG
+    command: [
+      "redis-server",
+      "--appendonly", "no",
+      "--maxmemory", "500mb",
+      "--maxmemory-policy", "allkeys-lru",
+      "--port", "1239"
+    ]
+    ports:
+      - "1239:1239"
+secrets:
+  main_gpt_token:
+    file: ./secrets/gpt-main/token.txt
+  main_gpt_uri:
+    file: ./secrets/gpt-main/model_uri.txt
+  main_gpt_api_key:
+    file: ./secrets/gpt-main/api_key.txt
+  reserve_gpt_token:
+    file: ./secrets/gpt-reserve/token.txt
+  reserve_gpt_uri:
+    file: ./secrets/gpt-reserve/model_uri.txt
+  reserve_gpt_api_key:
+    file: ./secrets/gpt-reserve/api_key.txt
+  discord_token:
+    file: ./secrets/discord_token.txt
+  proxy:
+    file: ./secrets/proxy.txt
