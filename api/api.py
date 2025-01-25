@@ -1,20 +1,23 @@
-import asyncio
 import json
 import os.path
 import random
 import re
 import httpx
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, WebSocketException
 from fastapi.responses import JSONResponse
+from fastapi.websockets import WebSocket
 from sqlalchemy import select, delete, and_
+
 from database.db_session import create_session, global_init
 from database.rooms import Room
 from database.users import User
 from database.auth import Auth
+from manager import WebSocketManager, WebSocketConnection
 
 app = FastAPI()
 reg = re.compile("\"(.*?)\"")
+manager = WebSocketManager()
 
 
 @app.on_event("startup")
@@ -31,6 +34,18 @@ def get_game_code(num_chars) -> str:
         slice_start = random.randint(0, len(code_chars) - 1)
         code += code_chars[slice_start: slice_start + 1]
     return code
+
+
+@app.websocket("/bunker/api/v1/ws/{game_code}")
+async def websocket_endpoint(websocket: WebSocket, game_code: str):
+    websocket = WebSocketConnection(websocket, game_code)
+    await manager.connect(websocket, game_code)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            await manager.send_message(game_code, data)
+    except WebSocketException:
+        await manager.disconnect(websocket, game_code)
 
 
 @app.post('/bunker/api/v1/new-game/{user_id}')
@@ -105,6 +120,7 @@ async def remove_room(game_code: str):
             await session.execute(
                 delete(User).where(User.room_id == int(room_id))
             )
+    await manager.remove_connection(game_code)
     return JSONResponse(content={"status": True})
 
 
@@ -149,8 +165,13 @@ async def reveal_characteristic(game_code: str, user_id: int, request: Request):
                     status_code=404
                 )
 
-            user.update(request.json["attribute"] + "_revealed")
-
+            user.update(request["attribute"] + "_revealed")
+            await manager.send_message(
+                game_code, {
+                    "type": "reveal_characteristic",
+                    "user_id": user_id,
+                }
+            )
             await session.commit()
     return JSONResponse(content={"status": True}, status_code=201)
 
@@ -166,12 +187,17 @@ async def leave_game(game_code: str, user_id: int):
             if room_id is None:
                 return JSONResponse({"status": False, "error": "Комната не найдена."}, 404)
 
-            users = await session.execute(
+            user = await session.execute(
                 select(User).where(and_(User.room_id == room_id.id, User.user_id == user_id))
             )
-            users = users.scalars().all()
-            for i in users:
-                i.leave()
+            user = user.scalars().first()
+            user.leave()
+            await manager.send_message(
+                game_code, {
+                    "type": "leave_game",
+                    "user_id": user_id
+                }
+            )
             await session.commit()
     return JSONResponse(content={"status": True}, status_code=201)
 
@@ -239,6 +265,18 @@ async def use_active_card(game_code: str, user_id: int, request: Request):
                 player.set_attr(player_card_attr, attr)
                 player_to_switch.switches += 1
                 player.switches += 1
+                await manager.send_message(
+                    game_code, {
+                        "type": "use_active_card",
+                        "user_id": player.user_id
+                    }
+                )
+                await manager.send_message(
+                    game_code, {
+                        "type": "use_active_card",
+                        "user_id": player_to_switch.user_id
+                    }
+                )
             elif active_card["id"] == 5:
                 player_card_attr = reg.findall(active_card["card"])[0]
                 users = await session.execute(
@@ -252,9 +290,21 @@ async def use_active_card(game_code: str, user_id: int, request: Request):
                 for i in range(len(users)):
                     users[i].set_attr(player_card_attr, attrs[i])
                     users[i].switches += 1
+                    await manager.send_message(
+                        game_code, {
+                            "type": "use_active_card",
+                            "user_id": users[i].user_id
+                        }
+                    )
             elif active_card["id"] == 7:
                 user.health = "Здоров 100%"
                 user.switches += 1
+                await manager.send_message(
+                    game_code, {
+                        "type": "use_active_card",
+                        "user_id": user_id
+                    }
+                )
             elif active_card["id"] == 11:
                 room.additional_information += "дружественный бункер неподалёку; "
             elif active_card["id"] == 12:
@@ -292,6 +342,18 @@ async def use_active_card(game_code: str, user_id: int, request: Request):
                 player.set_attr(player_card_attr, attr)
                 player_to_switch.switches += 1
                 player.switches += 1
+                await manager.send_message(
+                    game_code, {
+                        "type": "use_active_card",
+                        "user_id": player.user_id
+                    }
+                )
+                await manager.send_message(
+                    game_code, {
+                        "type": "use_active_card",
+                        "user_id": player_to_switch.user_id
+                    }
+                )
             elif active_card["id"] == 6:
                 data = request.json
                 player_to_switch = None
@@ -310,7 +372,12 @@ async def use_active_card(game_code: str, user_id: int, request: Request):
 
                 player_to_switch.set_attr("Здоровье", "Здоров 100%")
                 player_to_switch.switches += 1
-
+                await manager.send_message(
+                    game_code, {
+                        "type": "use_active_card",
+                        "user_id": player_to_switch.user_id
+                    }
+                )
             await session.commit()
             return KeyError({"status": True}, 201)
 
@@ -420,6 +487,7 @@ async def bunker_result(request: Request):
                 )
             return JSONResponse(content={"status": False}, status_code=501)
         result = result.json()
+    await manager.remove_all_connections(request.json["game_code"])
     return JSONResponse(content=result, status_code=201)
 
 
@@ -431,7 +499,7 @@ async def add_vote(game_code: str, user_id: int):
             room_id = await session.execute(
                 select(Room).where(Room.game_code == game_code)
             )
-            room_id = room_id.scalars().first()
+            room_id = room_id.scalars().first(й)
             if room_id is None:
                 return JSONResponse(content={"status": False, "error": "Комната не найдена"}, status_code=404)
 
@@ -443,7 +511,12 @@ async def add_vote(game_code: str, user_id: int):
                 return JSONResponse(content={"status": False, "error": "Игрок не найден"}, status_code=404)
 
             user.number_of_votes += 1
-
+            await manager.send_message(
+                game_code, {
+                    "type": "remove_vote",
+                    "user_id": user_id
+                }
+            )
             return JSONResponse(content={"status": True}, status_code=201)
 
 
@@ -466,7 +539,12 @@ async def remove_vote(game_code: str, user_id: int):
                 return JSONResponse(content={"status": False, "error": "Игрок не найден."}, status_code=404)
 
             user.number_of_votes -= 1
-
+            await manager.send_message(
+                game_code, {
+                    "type": "remove_vote",
+                    "user_id": user_id
+                }
+            )
             return JSONResponse(content={"status": True}, status_code=201)
 
 
@@ -490,6 +568,12 @@ async def reset_vote(game_code: str):
 
             for user in users:
                 user.number_of_votes = 0
+                await manager.send_message(
+                    game_code, {
+                        "type": "reset_vote",
+                        "user_id": user.user_id
+                    }
+                )
 
             return JSONResponse(content={"status": True}, status_code=201)
 
