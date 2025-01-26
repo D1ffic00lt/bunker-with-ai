@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Image Viewer</title>
+</head>
+<body>
+<img id="image" alt="">
+<script>
+    const hostId = {{ host_id | tojson }};
+    const userId = {{ user_id | tojson }};
+    console.info(hostId);
+    const wsUrl = `ws://127.0.0.1:80/api/v1/user-frame/${hostId}/${userId}`;
+    const imageElement = document.getElementById("image");
+
+    const socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+        console.log("WebSocket connected to", wsUrl);
+    };
+
+    socket.onmessage = (event) => {
+        console.log("websocket response has been gotten");
+        const base64Image = event.data;
+        imageElement.src = `data:image/png;base64,${base64Image}`;
+    };
+
+    socket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+    };
+
+    socket.onclose = () => {
+        console.log("WebSocket connection closed.");
+    };
+
+    window.addEventListener("beforeunload", () => {
+        console.log("Closing WebSocket connection.");
+        socket.close();
+    });
+</script>
+</body>
+</html>

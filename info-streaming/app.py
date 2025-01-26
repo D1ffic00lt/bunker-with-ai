@@ -3,43 +3,17 @@ import io
 import httpx
 
 from copy import deepcopy
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketException, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
+from connector import Manager, WebSocketConnection, FrameStreamManager, get_not_found_frame
+
 app = FastAPI()
+frame_manager = FrameStreamManager()
+api_manager = Manager(frame_manager)
 templates = Jinja2Templates(directory="./templates")
-not_found_frame = None
-not_found_frame_data = {
-    "gender_revealed": False,
-    "age_revealed": False,
-    "profession_revealed": False,
-    "health_revealed": False,
-    "luggage_revealed": False,
-    "fact1_revealed": False,
-    "fact2_revealed": False,
-    "phobia_revealed": False,
-    "hobby_revealed": False,
-    "number_of_votes": 0,
-    "active": True
-}
-
-
-async def get_not_found_frame():
-    async with httpx.AsyncClient() as requests:
-        try:
-            raw_not_found_frame = await requests.post(
-                "http://frame-generator:1334/api/v1/get-user-frame", json=not_found_frame_data
-            )
-        except httpx.TimeoutException:
-            return b""
-        if raw_not_found_frame.status_code // 100 in [4, 5]:
-            return b""
-
-        raw_not_found_frame = raw_not_found_frame.content
-        raw_not_found_frame = base64.b64encode(io.BytesIO(raw_not_found_frame).getvalue()).decode('utf-8')
-
-        return raw_not_found_frame
+not_found_frame: str | None = None
 
 
 @app.on_event("startup")
@@ -149,3 +123,41 @@ async def get_user_frame(host_id: int, user_id: int, request: Request):
         return templates.TemplateResponse(
             name="frame.html", context={"image_base64": frame, "request": request}
         )
+
+
+@app.get("/api/v1.1/user-frame/{host_id}/{user_id}", response_class=HTMLResponse)
+async def get_user_frame(host_id: int, user_id: int, request: Request):
+    return templates.TemplateResponse(
+        name="ws_frame.html",
+        context={
+            "request": request,
+            "host_id": str(host_id),
+            "user_id": str(user_id)
+        }
+    )
+
+
+@app.websocket("/api/v1/user-frame/{host_id}/{user_id}")
+async def frame_stream(websocket: WebSocket, host_id: int, user_id: int):
+    async with httpx.AsyncClient() as requests:
+        game_code = await requests.get(f"http://api:9462/bunker/api/v1/game-code/{host_id}")
+        if game_code.status_code // 100 in [4, 5]:
+            await websocket.accept()
+            await websocket.send_text(not_found_frame)
+            return
+        game_code = game_code.json()["game_code"]
+        websocket = WebSocketConnection(websocket, game_code, user_id)
+        await websocket.accept()
+
+        frame_manager.active_connections[game_code].append(websocket)
+
+        await websocket.send_text(not_found_frame)
+        if not api_manager.exists(game_code):
+            api_manager.create_connection(game_code)
+            api_manager.wait_for_update(game_code)
+
+        try:
+            while True:
+                await websocket.receive()
+        except (WebSocketException, WebSocketDisconnect):
+            await websocket.close()
