@@ -4,7 +4,7 @@ import random
 import re
 import httpx
 
-from fastapi import FastAPI, HTTPException, Request, WebSocketException
+from fastapi import FastAPI, HTTPException, Request, WebSocketException, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.websockets import WebSocket
 from sqlalchemy import select, delete, and_
@@ -42,9 +42,8 @@ async def websocket_endpoint(websocket: WebSocket, game_code: str):
     await manager.connect(websocket, game_code)
     try:
         while True:
-            data = await websocket.receive_json()
-            await manager.send_message(game_code, data)
-    except WebSocketException:
+            await websocket.receive_json()
+    except (WebSocketException, WebSocketDisconnect):
         await manager.disconnect(websocket, game_code)
 
 
@@ -499,7 +498,7 @@ async def add_vote(game_code: str, user_id: int):
             room_id = await session.execute(
                 select(Room).where(Room.game_code == game_code)
             )
-            room_id = room_id.scalars().first(й)
+            room_id = room_id.scalars().first()
             if room_id is None:
                 return JSONResponse(content={"status": False, "error": "Комната не найдена"}, status_code=404)
 
@@ -513,7 +512,7 @@ async def add_vote(game_code: str, user_id: int):
             user.number_of_votes += 1
             await manager.send_message(
                 game_code, {
-                    "type": "remove_vote",
+                    "type": "add_vote",
                     "user_id": user_id
                 }
             )

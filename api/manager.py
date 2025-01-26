@@ -10,6 +10,7 @@ class WebSocketConnection(object):
         return await self.websocket.accept()
 
     async def send_json(self, message: dict):
+        print(self.websocket.client_state, message)
         return await self.websocket.send_json(message)
 
     async def receive_json(self):
